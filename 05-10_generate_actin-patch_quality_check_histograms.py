@@ -46,6 +46,7 @@ def create_qc_raw_df(database_directory, coordinates_path, qc_directory):
                         Per_APs.APs_AreaShape_Center_X AS Center_X,
                         Per_APs.APs_AreaShape_Center_Y AS Center_Y,
                         APs_Number_Object_Number, 
+                        APs_Intensity_IntegratedIntensity_GFP / APs_AreaShape_Area AS IInt_Norm,
                         {', '.join(qc_features)}
                     FROM Per_APs
                     JOIN (SELECT Cell_ID, Cell_AreaShape_Area FROM Per_Cell) pc
@@ -85,8 +86,8 @@ if __name__ == '__main__':
     features_to_plot = (
         qc_df_raw
         .rename({
-            "APs_AreaShape_Perimeter": "APs_AreaShape_Perimeter (Raw)",
-            "APs_AreaShape_Area": "APs_AreaShape_Area (Raw)"
+            "APs_AreaShape_Perimeter": "APs_AreaShape_Perimeter",
+            "APs_AreaShape_Area": "APs_AreaShape_Area"
         })
         .drop(["Cell_ID", "Image_Path", "Center_X", "Center_Y", "APs_Number_Object_Number"])
     )
