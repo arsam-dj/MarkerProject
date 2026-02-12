@@ -26,17 +26,19 @@ if __name__ == '__main__':
         pl
         .read_csv(args.qc_compartment_features)
         .filter(
-            (pl.col('APs_AreaShape_Area') >= 0.95) |
-            (pl.col('APs_AreaShape_Perimeter') >= 75)
+            (pl.col('APs_Intensity_IntegratedIntensity_GFP') >= 10) |
+            (pl.col('IInt_Norm') <= 0.0115),
         )
         .select(["Cell_ID", "APs_Number_Object_Number"])
     )
 
-    # 1) save mean and median proportion of compartments removed for each cell in
+
+
+    # 1) save mean and median proportion of compartments removed for each cell and
     # 2) percentage of cells that got filtered out for each strain
     delete_problematic_compartment_masks(
         db_path=args.database_path,
-        filtered_comps=spb_to_remove,
+        filtered_comps=ap_to_remove,
         comp_name="APs",
         output_dir=args.qc_directory,
         plate=args.plate,
