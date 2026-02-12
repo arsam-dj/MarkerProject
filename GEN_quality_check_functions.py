@@ -97,17 +97,17 @@ def delete_problematic_compartment_masks(db_path, filtered_comps, comp_name, out
         # Determine mean and median number of compartments removed from cells in each strain
         query1 = f"""
                  WITH num_cells_affected AS (
-                    SELECT 
-                        ORF, 
+                    SELECT
+                        ORF,
                         Name,
-                        Strain_ID, 
+                        Strain_ID,
                         COUNT(DISTINCT temp_table.Cell_ID) AS Num_Cells_Affected
                     FROM temp_table
                     JOIN (SELECT Cell_ID, ORF, Name, Strain_ID FROM Per_Cell) pc
                     ON temp_table.Cell_ID = pc.Cell_ID
                     GROUP BY Strain_ID
                  ),
-                     
+
                  total_cells AS (
                     SELECT
                         Strain_ID,
@@ -115,35 +115,35 @@ def delete_problematic_compartment_masks(db_path, filtered_comps, comp_name, out
                     FROM Per_Cell
                     GROUP BY Strain_ID
                 )
-                     
-                 SELECT 
+
+                 SELECT
                     ORF,
                     Name,
-                    total_cells.Strain_ID, 
-                    Total_Cells, 
+                    total_cells.Strain_ID,
+                    Total_Cells,
                     COALESCE(Num_Cells_Affected, 0) AS Num_Cells_Affected
                 FROM total_cells
                 LEFT JOIN num_cells_affected
-                    ON total_cells.Strain_ID = num_cells_affected.Strain_ID;              
+                    ON total_cells.Strain_ID = num_cells_affected.Strain_ID;
                   """
 
         query2 = f"""
                  WITH original_comp_counts AS (
-                      SELECT 
-                        Strain_ID, 
-                        Cell_ID, 
+                      SELECT
+                        Strain_ID,
+                        Cell_ID,
                         Cell_Children_{comp_name}_Count
                       FROM Per_Cell
                  ),
-                 
+
                  num_comps_removed AS (
-                      SELECT 
-                        Cell_ID, 
+                      SELECT
+                        Cell_ID,
                         COUNT(*) AS Comp_Masks_Removed
                       FROM temp_table
                       GROUP BY Cell_ID
                  )
-                     
+
                  SELECT
                      Strain_ID,
                      Cell_Children_{comp_name}_Count,
@@ -184,11 +184,25 @@ def delete_problematic_compartment_masks(db_path, filtered_comps, comp_name, out
 
     # Delete specific problematic compartment masks
     if delete_all_comp_masks == "False":
+        # Create indexes for efficiency
+        cursor.execute(f"""
+        CREATE INDEX IF NOT EXISTS idx_temp_table
+        ON temp_table (Cell_ID, {comp_name}_Number_Object_Number);
+        """)
+
+        cursor.execute(f"""
+        CREATE INDEX IF NOT EXISTS idx_per_comps
+        ON Per_{comp_name} (Cell_ID, {comp_name}_Number_Object_Number);
+        """)
+
         delete_query = f"""
-                       DELETE FROM Per_{comp_name}
-                       WHERE 
-                            Cell_ID IN (SELECT Cell_ID FROM temp_table) AND
-                            {comp_name}_Number_Object_Number IN (SELECT {comp_name}_Number_Object_Number FROM temp_table);
+                        DELETE FROM Per_{comp_name}
+                        WHERE EXISTS (
+                            SELECT 1
+                            FROM temp_table
+                            WHERE temp_table.Cell_ID = Per_{comp_name}.Cell_ID
+                              AND temp_table.{comp_name}_Number_Object_Number = Per_{comp_name}.{comp_name}_Number_Object_Number
+                        );
                         """
         # Update children count for affected parent cells
         update_query = f"""
@@ -202,15 +216,13 @@ def delete_problematic_compartment_masks(db_path, filtered_comps, comp_name, out
                            SELECT count
                            FROM counts
                            WHERE counts.Cell_ID = Per_Cell.Cell_ID
-                       ), 0); 
+                       ), 0);
                         """
         cursor.execute(delete_query)
         cursor.execute(update_query)
-        conn.commit()
 
     # Delete all masks belonging to a given cell, regardless of whether it's problematic
     else:
-
         delete_query = f"""
                        DELETE FROM Per_{comp_name}
                        WHERE Cell_ID IN (SELECT Cell_ID FROM temp_table);
@@ -219,12 +231,13 @@ def delete_problematic_compartment_masks(db_path, filtered_comps, comp_name, out
         update_query = f"""
                        UPDATE Per_Cell
                        SET Cell_Children_{comp_name}_Count = {replace_comp_num_with}
-                       WHERE Per_Cell.Cell_ID IN (SELECT Cell_ID FROM temp_table); 
+                       WHERE Per_Cell.Cell_ID IN (SELECT Cell_ID FROM temp_table);
                         """
         cursor.execute(delete_query)
         cursor.execute(update_query)
-        conn.commit()
 
-    cursor.execute("DROP TABLE IF EXISTS temp_table;")
     conn.commit()
+    cursor.execute("DROP INDEX idx_temp_table;")
+    cursor.execute("DROP INDEX idx_per_comps;")
+    cursor.execute("DROP TABLE IF EXISTS temp_table;")
     conn.close()
