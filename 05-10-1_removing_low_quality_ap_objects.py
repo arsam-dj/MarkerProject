@@ -27,7 +27,10 @@ if __name__ == '__main__':
         .read_csv(args.qc_compartment_features)
         .filter(
             (pl.col('APs_Intensity_IntegratedIntensity_GFP') >= 10) |
-            (pl.col('IInt_Norm') <= 0.0115),
+            (pl.col('IInt_Norm') <= 0.0115) |
+            (pl.col('APs_AreaShape_Eccentricity') >= 0.9) |
+            (pl.col('APs_AreaShape_Area') >= 85) |
+            (pl.col('APs_AreaShape_Perimeter') >= 37)
         )
         .select(["Cell_ID", "APs_Number_Object_Number"])
     )
