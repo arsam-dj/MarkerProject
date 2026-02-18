@@ -240,4 +240,8 @@ def delete_problematic_compartment_masks(db_path, filtered_comps, comp_name, out
     cursor.execute("DROP INDEX idx_temp_table;")
     cursor.execute("DROP INDEX idx_per_comps;")
     cursor.execute("DROP TABLE IF EXISTS temp_table;")
+
+    # Vacuum database
+    cursor.execute("VACUUM;")
+
     conn.close()
