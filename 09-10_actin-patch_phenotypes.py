@@ -265,9 +265,9 @@ if __name__ == '__main__':
             "ManyAPs": f"{args.output_directory}/abnormal_ap_count/many_ap/outlier_cells/{args.plate}_APs_outlier_cells.csv",
             "FewAPs": f"{args.output_directory}/abnormal_ap_count/few_ap/outlier_cells/{args.plate}_APs_outlier_cells.csv",
             "HighCoverage": f"{args.output_directory}/abnormal_ap_coverage/high_coverage/outlier_cells/{args.plate}_APs_outlier_cells.csv",
-            "LowCoverage": f"{args.output_directory}/abnormal_ap_coverage/high_coverage/outlier_cells/{args.plate}_APs_outlier_cells.csv",
+            "LowCoverage": f"{args.output_directory}/abnormal_ap_coverage/low_coverage/outlier_cells/{args.plate}_APs_outlier_cells.csv",
             "Dispersed": f"{args.output_directory}/abnormal_ap_dispersion/high_dispersion/outlier_cells/{args.plate}_APs_outlier_cells.csv",
-            "Clustered": f"{args.output_directory}/abnormal_ap_dispersion/low_dispersion/outlier_cells/{args.plate}_APs_likely_unseparated.csv",
+            "Clustered": f"{args.output_directory}/abnormal_ap_dispersion/low_dispersion/outlier_cells/{args.plate}_APs_outlier_cells.csv",
             "HighUniform": f"{args.output_directory}/abnormal_ap_uniformity/high_uniformity/outlier_cells/{args.plate}_APs_outlier_cells.csv",
             "LowUniform": f"{args.output_directory}/abnormal_ap_uniformity/low_uniformity/outlier_cells/{args.plate}_APs_outlier_cells.csv",
             "NoBudLocal": f"{args.output_directory}/abnormal_bud_localization/outlier_cells/{args.plate}_APs_outlier_cells.csv"
