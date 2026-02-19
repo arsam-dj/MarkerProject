@@ -697,24 +697,31 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
         os.makedirs(f"{output_dir}/aggregated_penetrance_data")
 
     cc_stages = ["G1", "SG2", "MAT"]
-    phenotypes = list(phenotype_outliers.keys())
     plate_num = int(plate.split("Plate")[1])
 
     # Combine all *_outlier_cells.csv files, attach custom phenotype labels, and aggregate assigned labels for each Cell_ID
+    dfs = []
+    problem_phenotypes = []
+    for phenotype in phenotype_outliers:
+        df = pl.read_csv(phenotype_outliers[phenotype])
+
+        if df.height == 0:  # ignore empty dataframes (cases where no outliers were found for a phenotype)
+            problem_phenotypes.append(phenotype)
+            continue
+
+        dfs.append(
+            df.select(["Replicate", "Row", "Column", "Cell_ID", "ORF", "Name", "Strain_ID", "Predicted_Label"])
+            .with_columns(pl.lit(phenotype).alias("Cell_Phenotype"))
+        )
+
+    # remove problem phenotypes (those with no outliers) from dictionary
+    original_phenotypes = list(phenotype_outliers.keys())
+    phenotype_outliers = {phenotype: outliers for phenotype, outliers in phenotype_outliers.items() if phenotype not in problem_phenotypes}
+    phenotypes = list(phenotype_outliers.keys())
+
     all_data = (
         pl
-        .concat(
-            items=[
-                (
-                    pl
-                    .read_csv(phenotype_outliers[phenotype])
-                    .select(["Replicate", "Row", "Column", "Cell_ID", "ORF", "Name", "Strain_ID", "Predicted_Label"])
-                    .with_columns(pl.lit(phenotype).alias("Cell_Phenotype"))
-                )
-                for phenotype in phenotype_outliers
-            ],
-            how="vertical"
-        )
+        .concat(items=dfs, how="vertical")
         .with_columns( # if Name is NULL, this causes a lot of issues with joins; so I changed NULLs to ""
             (
                 pl
@@ -749,7 +756,7 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
     conn = sqlite3.connect(db_path)
     cell_counts_no_cc = (
         pl
-        .read_database(
+        .read_database(  # the two inner queries are done this way to account for strains that don't have data for all reps
             query="""
                     WITH iq1 AS (
     	                SELECT
@@ -841,7 +848,7 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
         .join(cell_counts_no_cc, on=["Replicate", "Row", "Column", "ORF", "Name", "Strain_ID"], how="right")
         .group_by(["ORF", "Name", "Strain_ID", "Row", "Column"])
         .agg(
-            (pl.col("Num_Outliers").sum() / (pl.col("Num_Cells").sum() / pl.len())).alias("Overall_Penetrance")
+            (pl.col("Num_Outliers").sum() / (pl.col("Num_Cells").sum() / pl.len())).alias("Overall_Penetrance")  # pl.col("Num_Cells") is the total cell count across all 3 reps and pl.len() is always 3. Basically, outliers are per-rep but there's no per-rep total cell count, hence this total_cells / 3.
         )
     )
 
@@ -876,7 +883,7 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
 
     # Per Phenotype penetrance
     rename_dict1 = {phenotype: f"Overall_{phenotype}_Penetrance" for phenotype in phenotype_outliers.keys()}
-    select_list1 = ["ORF", "Name", "Strain_ID", "Row", "Column"] + [f"Overall_{phenotype}_Penetrance" for phenotype in phenotype_outliers.keys()]
+    select_list1 = ["ORF", "Name", "Strain_ID", "Row", "Column"] + [f"Overall_{phenotype}_Penetrance" for phenotype in original_phenotypes]
 
     per_phenotype_penetrance = (
         all_data
@@ -893,8 +900,14 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
             index=["ORF", "Name", "Strain_ID", "Row", "Column"],
             values="Penetrance")
         .rename(rename_dict1)
-        .select(select_list1)
     )
+
+    for problem_phenotype in problem_phenotypes:
+        per_phenotype_penetrance = (
+            per_phenotype_penetrance
+            .with_columns(pl.lit(0).alias(f"Overall_{phenotype}_Penetrance"))
+        )
+    per_phenotype_penetrance = per_phenotype_penetrance.select(select_list1)
 
     # Per Phenotype by CC penetrance
     rename_dict2 = {
@@ -902,7 +915,7 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
         for phenotype in phenotypes
         for cc_stage in cc_stages
     }
-    select_list2 = ["ORF", "Name", "Strain_ID", "Row", "Column"] + [f"{phenotype}_{cc_stage}_Penetrance" for phenotype in phenotypes for cc_stage in cc_stages]
+    select_list2 = ["ORF", "Name", "Strain_ID", "Row", "Column"] + [f"{phenotype}_{cc_stage}_Penetrance" for phenotype in original_phenotypes for cc_stage in cc_stages]
 
     per_phenotype_cc_penetrance = (
         all_data
@@ -924,18 +937,22 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
         .rename(rename_dict2,strict=False)
     )
 
-    for phenotype in phenotype_outliers.keys():
-        for cc_stage in ["G1", "SG2", "MAT"]:
+    for problem_phenotype in problem_phenotypes:
+        for cc_stage in cc_stages:
+            per_phenotype_cc_penetrance = (
+                per_phenotype_cc_penetrance
+                .with_columns(pl.lit(0).alias(f"{phenotype}_{cc_stage}_Penetrance"))
+            )
+
+    for phenotype in original_phenotypes:
+        for cc_stage in cc_stages:
             if f"{phenotype}_{cc_stage}_Penetrance" not in per_phenotype_cc_penetrance.columns:
                 per_phenotype_cc_penetrance = (
                     per_phenotype_cc_penetrance
                     .with_columns(pl.lit(0).alias(f"{phenotype}_{cc_stage}_Penetrance"))
                 )
 
-    per_phenotype_cc_penetrance = (
-        per_phenotype_cc_penetrance
-        .select(select_list2)
-    )
+    per_phenotype_cc_penetrance = per_phenotype_cc_penetrance.select(select_list2)
 
 
     # Merge all dataframes together
