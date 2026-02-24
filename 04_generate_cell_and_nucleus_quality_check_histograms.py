@@ -339,7 +339,7 @@ if __name__ == '__main__':
         output_figure_name="Cells_qc_feature_distributions_raw")
 
     cell_qc_df_scaled = cell_qc_df_scaled.drop(
-        ["Image_Path", "Center_X", "Center_Y", "Cell_ID", "ORF", "Name", "Strain_ID", "Trilobed", "Asymmetric"])
+        ["Image_Path", "Center_X", "Center_Y", "Cell_ID", "ORF", "Name", "Strain_ID"])
     feature_distributions_matrix(
         qc_features=cell_qc_df_scaled,
         qc_directory=args.qc_directory,
