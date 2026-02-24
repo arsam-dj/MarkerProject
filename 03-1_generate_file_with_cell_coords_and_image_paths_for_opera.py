@@ -16,7 +16,7 @@ parser.add_argument('-o', '--output_directory', default='', help='Where to save 
 args = parser.parse_args()
 
 
-def create_coordinate_file_overlay(db_path, overlay_dir, plate, is_tsa, output_folder):
+def create_coordinate_file_overlay(db_path, overlay_dir, plate, is_tsa, plate_condition, output_folder):
     """
     Create a coordinate file with every cell's Cell_ID, x-coordinate, y-coordinate, and image path. Images show cell,
     nucleus, and compartment overlays. To be used as input for singlecelltool.
@@ -26,12 +26,19 @@ def create_coordinate_file_overlay(db_path, overlay_dir, plate, is_tsa, output_f
         overlay_dir (str): path to directory containing images
         plate (str): plate number to use when saving output file
         is_tsa (str): state whether plate is DMA or TSA
+        plate_condition (str): for TSA, indicate condition. Can either be 'both' (26C, 37C), just 26C, or just 37C.
         output_folder (str): where to save output
     """
     conn = sqlite3.connect(db_path)
     plate_type = 'DMA'
     if is_tsa == 'True':
         plate_type = 'TSA'
+
+    if plate_type == 'TSA':
+        output_path = f"{output_folder}/{plate_type}_{plate_condition}_Plate{plate}_overlay_image_paths.csv"
+    else:
+        output_path = f"{output_folder}/{plate_type}_Plate{plate}_overlay_image_paths.csv"
+
     (
         pl
         .read_database(
@@ -68,7 +75,7 @@ def create_coordinate_file_overlay(db_path, overlay_dir, plate, is_tsa, output_f
             + pl.lit("_overlays.png").cast(pl.Utf8)).alias("Image_Path")
         )
         .select(["Cell_ID", "Image_Path", "Center_X", "Center_Y"])
-        .write_csv(f"{output_folder}/{plate_type}_Plate{plate}_overlay_image_paths.csv")
+        .write_csv(output_path)
     )
 
     conn.close()
@@ -139,7 +146,7 @@ def create_coordinate_file_fp(db_path, image_dirs, plate, is_tsa, plate_conditio
         (
             pl
             .concat(items=coordinate_dfs, how="vertical")
-            .write_csv(f"{output_folder}/TSA_Plate{plate}_raw_image_paths.csv")
+            .write_csv(f"{output_folder}/TSA_{condition}C_Plate{plate}_raw_image_paths.csv")
         )
 
     else:
@@ -194,6 +201,7 @@ if __name__ == '__main__':
         overlay_dir=args.overlay_directory,
         plate=str(args.plate_number),
         is_tsa=args.is_tsa,
+        plate_condition=args.condition,
         output_folder=args.output_directory)
 
     if args.is_tsa == 'True':
