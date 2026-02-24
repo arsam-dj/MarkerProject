@@ -22,8 +22,9 @@ def delete_parentless_objects(compartment_db, tables):
     conn = sqlite3.connect(compartment_db)
     cursor = conn.cursor()
 
+    # Delete parentless objects
     for table, per_image_col in tables.items():
-        # Delete parentless objects
+
         cursor.execute(f"DELETE FROM {table} WHERE Cell_ID IS NULL;")
 
         # Update all images, setting missing counts to 0
@@ -43,6 +44,27 @@ def delete_parentless_objects(compartment_db, tables):
 
         conn.commit()
 
+    # Delete objects with multiple nuclei and no nuclei
+    cursor.execute(f"SELECT Cell_ID FROM Per_Nuclei WHERE Cell_ID IN (SELECT Cell_ID FROM Per_Cell WHERE Cell_Children_Nuclei_Count = 0 OR Cell_Children_Nuclei_Count > 2);")
+    cursor.execute(f"DELETE FROM Per_Cell WHERE Cell_Children_Nuclei_Count = 0 OR Cell_Children_Nuclei_Count > 2;")
+    # Update all images, setting missing counts to 0
+    nuc_cell_tables = {"Per_Nuclei": "Image_Count_Nuclei", "Per_Cell": "Image_Count_Cell"}
+    for table, per_image_col in nuc_cell_tables.items():
+        cursor.execute(f"""
+            WITH counts AS (
+                SELECT ImageNumber, COUNT(Cell_ID) AS count
+                FROM {table}
+                GROUP BY ImageNumber
+            )
+            UPDATE Per_Image
+            SET {per_image_col} = COALESCE((
+                SELECT count
+                FROM counts
+                WHERE counts.ImageNumber = Per_Image.ImageNumber
+            ), 0);
+        """)
+
+    conn.commit()
     conn.close()
 
 
