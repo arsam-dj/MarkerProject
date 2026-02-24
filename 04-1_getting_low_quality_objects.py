@@ -70,7 +70,7 @@ def save_filtered_objects(db_path, filtered_cells, output_path, plate):
 	            FROM Per_Cell
 	            WHERE 
 	                Cell_ID IN ({cells}) 
-	                OR Cell_Children_Nuclei_Count > 4  
+	                OR Cell_Children_Nuclei_Count > 2  
 	                OR Cell_Children_Nuclei_Count = 0
 	                OR ORF = 'BLANK'
 	            GROUP BY Replicate, Strain_ID
@@ -180,22 +180,21 @@ if __name__ == '__main__':
     filtered_cells = (
         all_data
         .filter(
-            (pl.col('Cell_AreaShape_Area') <= -1.25) | (pl.col('Cell_AreaShape_Area') >= 3) |
-            (pl.col('Cell_AreaShape_Perimeter') <= -1.5) | (pl.col('Cell_AreaShape_Perimeter') >= 3.25) |
-            (pl.col('Cell_AreaShape_MajorAxisLength') <= -1.5) | (pl.col('Cell_AreaShape_MajorAxisLength') >= 5) |
-            (pl.col('Cell_AreaShape_MinorAxisLength') <= -2) | (pl.col('Cell_AreaShape_MinorAxisLength') >= 3) |
-            (pl.col('Cell_AreaShape_FormFactor') >= 0.8) |
-            (pl.col('Cell_AreaShape_Extent') <= -4) | (pl.col('Cell_AreaShape_Extent') >= 3) |
-            (pl.col('Cell_AreaShape_Compactness') <= -1) | (pl.col('Cell_AreaShape_Compactness') >= 3) |
-            (pl.col('Cell_AreaShape_MaxFeretDiameter') <= -1.5) | (pl.col('Cell_AreaShape_MaxFeretDiameter') >= 5) |
-            (pl.col('Cell_AreaShape_MinFeretDiameter') <= -2) | (pl.col('Cell_AreaShape_MinFeretDiameter') >= 3) |
-            (pl.col('Area_Over_Perimeter') <= -1.8) | (pl.col('Area_Over_Perimeter') >= 3.75) |
+            (pl.col('Cell_AreaShape_Area') <= -2) | (pl.col('Cell_AreaShape_Area') >= 4.75) |
+            (pl.col('Cell_AreaShape_Perimeter') <= -2) | (pl.col('Cell_AreaShape_Perimeter') >= 4.25) |
+            (pl.col('Cell_AreaShape_MajorAxisLength') <= -2) | (pl.col('Cell_AreaShape_MajorAxisLength') >= 4.5) |
+            (pl.col('Cell_AreaShape_MinorAxisLength') <= -3) | (pl.col('Cell_AreaShape_MinorAxisLength') >= 4.25) |
+            (pl.col('Cell_AreaShape_FormFactor') <= -4) | (pl.col('Cell_AreaShape_FormFactor') >= 1.5) |
+            (pl.col('Cell_AreaShape_Extent') <= -4) |
+            (pl.col('Cell_AreaShape_Compactness') >= 4.75) |
+            (pl.col('Cell_AreaShape_MaxFeretDiameter') <= -2) | (pl.col('Cell_AreaShape_MaxFeretDiameter') >= 4.5) |
+            (pl.col('Cell_AreaShape_MinFeretDiameter') <= -3) | (pl.col('Cell_AreaShape_MinFeretDiameter') >= 4.25) |
+            (pl.col('Area_Over_Perimeter') <= -3) | (pl.col('Area_Over_Perimeter') >= 4) |
             (pl.col('MajorAxisLength_Over_MinorAxisLength') >= 5) |
             (pl.col('MaxFeretDiameter_Over_MinFeretDiameter') >= 5) |
             (pl.col('Trilobed') >= 0.008) |
-            (pl.col('Asymmetric') >= 0.12) |
             (pl.col('Nuclei_Distance_Minimum_Cell') <= 4) | (pl.col('Nuclei_Distance_Minimum_Cell') >= 18) |
-            (pl.col('Nuclear_Area_Over_Cell_Area') >= 0.4)
+            (pl.col('Nuclear_Area_Over_Cell_Area') >= 0.6)
         )
         .select("Cell_ID")
         .to_series()
