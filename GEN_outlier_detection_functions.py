@@ -6,7 +6,8 @@ from functools import reduce
 from statistics import stdev, mean
 
 
-def scale_compartment_feature(db_path, table_name, feature_name, output_dir, plate, compartment_name, cell_cycle_stages=["G1", "SG2", "MAT"], feature_table=""):
+def scale_compartment_feature(db_path, table_name, feature_name, output_dir, plate, compartment_name,
+                              cell_cycle_stages=["G1", "SG2", "MAT"], feature_table=""):
     """
     First identifies cells that have an abnormal number of compartment masks, then scales the compartment sizes according to
     wildtype for each cell cycle stage while ignoring these cells from the calculation. Exports the results to be used in a
@@ -54,7 +55,6 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
         )
         conn.close()
 
-
     # Get replicates and conditions (features will be scaled per-plate# x per-rep x per-condition x per-cc)
     replicates = (
         all_cells
@@ -81,8 +81,10 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
                     )
                 )
 
-                if wt_cc_comps.shape[0] < 2: # Check if there are any wildtypes on plates (some plates don't have enough controls)
-                    print(f"Skipping {plate} - {condition}C - {replicate} - {cc_stage} due to insufficient number of wildtype controls.")
+                if wt_cc_comps.shape[
+                    0] < 2:  # Check if there are any wildtypes on plates (some plates don't have enough controls)
+                    print(
+                        f"Skipping {plate} - {condition}C - {replicate} - {cc_stage} due to insufficient number of wildtype controls.")
                     continue
                 wt_mean_distance = mean(wt_cc_comps[feature_name])
                 wt_stdev_distance = stdev(wt_cc_comps[feature_name])
@@ -132,7 +134,8 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
     return all_cells
 
 
-def identify_outlier_cells(feature_pvals, scaled_col_name, output_dir, plate, compartment_name, pval_cutoff=0.05, right_sided_outliers=True, excluded_cc_stages=[]):
+def identify_outlier_cells(feature_pvals, scaled_col_name, output_dir, plate, compartment_name, pval_cutoff=0.05,
+                           right_sided_outliers=True, excluded_cc_stages=[]):
     """
     Obtain and save outlier cells from a given cell population based on their calculated p-values.
 
@@ -176,7 +179,8 @@ def identify_outlier_cells(feature_pvals, scaled_col_name, output_dir, plate, co
     return outlier_cells
 
 
-def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate, compartment_name, cell_cycle_stages=["G1", "SG2", "MAT"]):
+def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate, compartment_name,
+                                 cell_cycle_stages=["G1", "SG2", "MAT"]):
     """
     Calculates penetrance of abnormal compartment size phenotype for a given compartment for wildtype controls and mutants.
     For foci compartments, this is typically characterized by having at least one large/small foci in a cell. This is done a
@@ -266,7 +270,8 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
 
             # Calculate overall penetrance
             try:
-                penetrance_dict[f"Overall_{replicate}_Penetrance"].append(all_strain_rep_outlier_cells / all_strain_rep_cells)
+                penetrance_dict[f"Overall_{replicate}_Penetrance"].append(
+                    all_strain_rep_outlier_cells / all_strain_rep_cells)
             except ZeroDivisionError:
                 penetrance_dict[f"Overall_{replicate}_Penetrance"].append(-1.0)
 
@@ -292,7 +297,8 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
 
             # Calculate overall cell cycle stage penetrance
             try:
-                penetrance_dict[f"Overall_{cc_stage}_Penetrance"].append(all_strain_outlier_cc_cells / all_strain_cc_cells)
+                penetrance_dict[f"Overall_{cc_stage}_Penetrance"].append(
+                    all_strain_outlier_cc_cells / all_strain_cc_cells)
             except ZeroDivisionError:
                 penetrance_dict[f"Overall_{cc_stage}_Penetrance"].append(-1.0)
 
@@ -319,7 +325,8 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
                 )
                 # Calculate cell cycle stage penetrance for replicate
                 try:
-                    penetrance_dict[f"{replicate}_{cc_stage}_Penetrance"].append(all_strain_outlier_cc_rep_cells / all_strain_cc_rep_cells)
+                    penetrance_dict[f"{replicate}_{cc_stage}_Penetrance"].append(
+                        all_strain_outlier_cc_rep_cells / all_strain_cc_rep_cells)
                 except ZeroDivisionError:
                     penetrance_dict[f"{replicate}_{cc_stage}_Penetrance"].append(-1.0)
 
@@ -334,7 +341,8 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
     return penetrance_table
 
 
-def tabulate_strain_cell_counts(all_cells, all_outlier_cells, output_dir, plate, compartment_name, cell_cycle_stages=["G1", "SG2", "MAT"]):
+def tabulate_strain_cell_counts(all_cells, all_outlier_cells, output_dir, plate, compartment_name,
+                                cell_cycle_stages=["G1", "SG2", "MAT"]):
     """
     Calculates penetrance of abnormal compartment size phenotype for a given compartment for wildtype controls and mutants.
     For foci compartments, this is typically characterized by having at least one large/small foci in a cell. This is done a
@@ -452,7 +460,6 @@ def tabulate_strain_cell_counts(all_cells, all_outlier_cells, output_dir, plate,
             cell_count_dict[f"Total_{cc_stage}_Outlier_Cells"].append(all_strain_outlier_cc_cells)
 
             for replicate in replicates:
-
                 all_strain_outlier_cc_rep_cells = (
                     all_outlier_cells
                     .filter(
@@ -485,7 +492,8 @@ def tabulate_strain_cell_counts(all_cells, all_outlier_cells, output_dir, plate,
     )
 
 
-def get_strain_hits(all_cells, outlier_cells, penetrance_table, wt_pens_dir, output_dir, plate, cc_stages=["G1", "SG2", "MAT"], percentile_cutoff=0.95):
+def get_strain_hits(all_cells, outlier_cells, penetrance_table, wt_pens_dir, output_dir, plate,
+                    cc_stages=["G1", "SG2", "MAT"], percentile_cutoff=0.95):
     """
     For a given compartment phenotype, identifies mutants that display phenotype at a higher/lower incidence relative
     to wildtype controls. Hit mutants are those that have CC penetrance above 95th wt percentile or below 5th percentile
@@ -558,7 +566,8 @@ def get_strain_hits(all_cells, outlier_cells, penetrance_table, wt_pens_dir, out
         wildtype_well_penetrances.write_csv(f"{wt_pens_dir}/{plate}_per_well_wt_penetrances.csv")
 
         # Get cutoffs
-        pen_cutoff = wildtype_well_penetrances["Penetrance"].quantile(quantile=percentile_cutoff, interpolation="nearest")
+        pen_cutoff = wildtype_well_penetrances["Penetrance"].quantile(quantile=percentile_cutoff,
+                                                                      interpolation="nearest")
 
         log_dict[f"{cc_stage}_Cutoff"] = pen_cutoff
 
@@ -716,13 +725,14 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
 
     # remove problem phenotypes (those with no outliers) from dictionary
     original_phenotypes = list(phenotype_outliers.keys())
-    phenotype_outliers = {phenotype: outliers for phenotype, outliers in phenotype_outliers.items() if phenotype not in problem_phenotypes}
+    phenotype_outliers = {phenotype: outliers for phenotype, outliers in phenotype_outliers.items() if
+                          phenotype not in problem_phenotypes}
     phenotypes = list(phenotype_outliers.keys())
 
     all_data = (
         pl
         .concat(items=dfs, how="vertical")
-        .with_columns( # if Name is NULL, this causes a lot of issues with joins; so I changed NULLs to ""
+        .with_columns(  # if Name is NULL, this causes a lot of issues with joins; so I changed NULLs to ""
             (
                 pl
                 .when(pl.col("Name").is_null())
@@ -750,13 +760,13 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
     )
     all_data_agg.write_csv(f"{output_dir}/aggregated_cell_outlier_data/{plate}_aggregated_cell_outlier_data.csv")
 
-
     # Get overall cell counts for each strain in each of its replicates for which data is available. Do this without CC and
     # with CC.
     conn = sqlite3.connect(db_path)
     cell_counts_no_cc = (
         pl
-        .read_database(  # the two inner queries are done this way to account for strains that don't have data for all reps
+        .read_database(
+            # the two inner queries are done this way to account for strains that don't have data for all reps
             query="""
                     WITH iq1 AS (
     	                SELECT
@@ -837,7 +847,6 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
     )
     conn.close()
 
-
     # Overall penetrance
     overall_penetrance = (
         all_data
@@ -848,7 +857,8 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
         .join(cell_counts_no_cc, on=["Replicate", "Row", "Column", "ORF", "Name", "Strain_ID"], how="right")
         .group_by(["ORF", "Name", "Strain_ID", "Row", "Column"])
         .agg(
-            (pl.col("Num_Outliers").sum() / (pl.col("Num_Cells").sum() / pl.len())).alias("Overall_Penetrance")  # pl.col("Num_Cells") is the total cell count across all 3 reps and pl.len() is always 3. Basically, outliers are per-rep but there's no per-rep total cell count, hence this total_cells / 3.
+            (pl.col("Num_Outliers").sum() / (pl.col("Num_Cells").sum() / pl.len())).alias("Overall_Penetrance")
+            # pl.col("Num_Cells") is the total cell count across all 3 reps and pl.len() is always 3. Basically, outliers are per-rep but there's no per-rep total cell count, hence this total_cells / 3.
         )
     )
 
@@ -877,13 +887,14 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
         }
         )
         .select(
-            ["ORF", "Name", "Strain_ID", "Row", "Column", "Overall_G1_Penetrance", "Overall_SG2_Penetrance", "Overall_MAT_Penetrance"])
+            ["ORF", "Name", "Strain_ID", "Row", "Column", "Overall_G1_Penetrance", "Overall_SG2_Penetrance",
+             "Overall_MAT_Penetrance"])
     )
-
 
     # Per Phenotype penetrance
     rename_dict1 = {phenotype: f"Overall_{phenotype}_Penetrance" for phenotype in phenotype_outliers.keys()}
-    select_list1 = ["ORF", "Name", "Strain_ID", "Row", "Column"] + [f"Overall_{phenotype}_Penetrance" for phenotype in original_phenotypes]
+    select_list1 = ["ORF", "Name", "Strain_ID", "Row", "Column"] + [f"Overall_{phenotype}_Penetrance" for phenotype in
+                                                                    original_phenotypes]
 
     per_phenotype_penetrance = (
         all_data
@@ -915,7 +926,8 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
         for phenotype in phenotypes
         for cc_stage in cc_stages
     }
-    select_list2 = ["ORF", "Name", "Strain_ID", "Row", "Column"] + [f"{phenotype}_{cc_stage}_Penetrance" for phenotype in original_phenotypes for cc_stage in cc_stages]
+    select_list2 = ["ORF", "Name", "Strain_ID", "Row", "Column"] + [f"{phenotype}_{cc_stage}_Penetrance" for phenotype
+                                                                    in original_phenotypes for cc_stage in cc_stages]
 
     per_phenotype_cc_penetrance = (
         all_data
@@ -934,7 +946,7 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
             index=["ORF", "Name", "Strain_ID", "Row", "Column"],
             values="Penetrance")
         .drop(['{"G1","Null"}', '{"SG2","Null"}', '{"MAT","Null"}'], strict=False)
-        .rename(rename_dict2,strict=False)
+        .rename(rename_dict2, strict=False)
     )
 
     for problem_phenotype in problem_phenotypes:
@@ -953,7 +965,6 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
                 )
 
     per_phenotype_cc_penetrance = per_phenotype_cc_penetrance.select(select_list2)
-
 
     # Merge all dataframes together
     combined_df = reduce(
@@ -1001,7 +1012,8 @@ def tabulate_compartment_masks_per_strain(db_path, compartment_name, plate, outp
         .read_database(
             query=f"SELECT Replicate, Condition, ORF, Name, Strain_ID, Predicted_Label, Cell_Children_{compartment_name}_Count FROM Per_Cell;",
             connection=conn)
-        .filter(pl.col(f"Cell_Children_{compartment_name}_Count") != -1) # Remove cells whose compartments were removed for being problematic
+        .filter(pl.col(f"Cell_Children_{compartment_name}_Count") != -1)
+    # Remove cells whose compartments were removed for being problematic
     )
 
     CI = 0.95
@@ -1036,7 +1048,8 @@ def tabulate_compartment_masks_per_strain(db_path, compartment_name, plate, outp
         .pivot(
             on="Predicted_Label",
             index=["Replicate", "Condition"],
-            values=[f"Mean_Num_{compartment_name}", f"Median_Num_{compartment_name}", f"StDev_Num_{compartment_name}", "Lower_95CI", "Upper_95CI"]
+            values=[f"Mean_Num_{compartment_name}", f"Median_Num_{compartment_name}", f"StDev_Num_{compartment_name}",
+                    "Lower_95CI", "Upper_95CI"]
         )
         .with_columns(pl.lit("").alias("ORF"), pl.lit("WT").alias("Name"), pl.lit("ALL_WILDTYPES").alias("Strain_ID"))
         .sort(["Replicate", "Condition"])
@@ -1071,7 +1084,8 @@ def tabulate_compartment_masks_per_strain(db_path, compartment_name, plate, outp
         .pivot(
             on="Predicted_Label",
             index=["Replicate", "Condition"],
-            values=[f"Mean_Num_{compartment_name}", f"Median_Num_{compartment_name}", f"StDev_Num_{compartment_name}", "Lower_95CI", "Upper_95CI"]
+            values=[f"Mean_Num_{compartment_name}", f"Median_Num_{compartment_name}", f"StDev_Num_{compartment_name}",
+                    "Lower_95CI", "Upper_95CI"]
         )
         .with_columns(pl.lit("").alias("ORF"), pl.lit("MUT").alias("Name"), pl.lit("ALL_MUTANTS").alias("Strain_ID"))
         .sort(["Replicate", "Condition"])
@@ -1105,7 +1119,8 @@ def tabulate_compartment_masks_per_strain(db_path, compartment_name, plate, outp
         .pivot(
             on="Predicted_Label",
             index=["Replicate", "Condition", "ORF", "Name", "Strain_ID"],
-            values=[f"Mean_Num_{compartment_name}", f"Median_Num_{compartment_name}", f"StDev_Num_{compartment_name}", "Lower_95CI", "Upper_95CI"]
+            values=[f"Mean_Num_{compartment_name}", f"Median_Num_{compartment_name}", f"StDev_Num_{compartment_name}",
+                    "Lower_95CI", "Upper_95CI"]
         )
         .sort(["Replicate", "Condition", "Name"])
     )
@@ -1115,9 +1130,12 @@ def tabulate_compartment_masks_per_strain(db_path, compartment_name, plate, outp
         pl
         .concat([agg_data1.select(agg_data3.columns), agg_data2.select(agg_data3.columns), agg_data3], how="vertical")
         .select(["Replicate", "Condition", "ORF", "Name", "Strain_ID",
-                 f"Mean_Num_{compartment_name}_G1", f"Mean_Num_{compartment_name}_SG2", f"Mean_Num_{compartment_name}_MAT",
-                 f"Median_Num_{compartment_name}_G1", f"Median_Num_{compartment_name}_SG2", f"Median_Num_{compartment_name}_MAT",
-                 f"StDev_Num_{compartment_name}_G1", f"StDev_Num_{compartment_name}_SG2", f"StDev_Num_{compartment_name}_MAT",
+                 f"Mean_Num_{compartment_name}_G1", f"Mean_Num_{compartment_name}_SG2",
+                 f"Mean_Num_{compartment_name}_MAT",
+                 f"Median_Num_{compartment_name}_G1", f"Median_Num_{compartment_name}_SG2",
+                 f"Median_Num_{compartment_name}_MAT",
+                 f"StDev_Num_{compartment_name}_G1", f"StDev_Num_{compartment_name}_SG2",
+                 f"StDev_Num_{compartment_name}_MAT",
                  "Lower_95CI_G1", "Lower_95CI_SG2", "Lower_95CI_MAT",
                  "Upper_95CI_G1", "Upper_95CI_SG2", "Upper_95CI_MAT"])
         .write_csv(f"{output_directory}/{plate}_{compartment_name.lower()}_number_in_cells_by_cc_and_rep.csv")
@@ -1243,19 +1261,20 @@ def calculate_compartment_distances(db_path, compartment_name, plate, output_dir
                        connection=conn)
         # Calculate distance between subcellular compartments within the same cell.
         .with_columns(
-                (
+            (
                     (
-                        (pl.col("X2") - pl.col("X1")) ** 2 +
-                        (pl.col("Y2") - pl.col("Y1")) ** 2
+                            (pl.col("X2") - pl.col("X1")) ** 2 +
+                            (pl.col("Y2") - pl.col("Y1")) ** 2
                     ) ** 0.5
-                )
-                .alias(f"{compartment_name}_Distance")
             )
+            .alias(f"{compartment_name}_Distance")
+        )
         ## Drop extra Cell_ID column
         .rename({"Cell_ID1": "Cell_ID"})
         .drop(["Cell_ID2"])
         # Get aggregate metrics
-        .group_by(["Replicate", "Condition", "Row", "Column", "ORF", "Name", "Strain_ID", f"Num_{compartment_name}", "Predicted_Label", "Cell_ID"])
+        .group_by(["Replicate", "Condition", "Row", "Column", "ORF", "Name", "Strain_ID", f"Num_{compartment_name}",
+                   "Predicted_Label", "Cell_ID"])
         .agg(
             pl.count().alias(f"Num_Distances"),
             pl.col(f"{compartment_name}_Distance").mean().alias("Distance_Mean"),
@@ -1338,3 +1357,179 @@ def combine_FracAtD_rings(db_path, compartment_name, plate, output_directory):
     simplified_FracAtD.write_csv(f"{output_directory}/{plate}_{compartment_name}_simplified_FracAtD_features.csv")
 
     return simplified_FracAtD
+
+
+def get_shape_outliers_for_multi_foci_comps(
+        db_path,
+        compartment_name,
+        feature_name,
+        plate,
+        proportions_dir,
+        scaled_feature_dir,
+        outlier_objects_dir,
+        penetrance_dir,
+        cell_count_dir,
+        strain_hits_dir,
+        wt_pens_dir,
+        all_cells,
+        pval_cutoff=0.05,
+        right_sided_outliers=True,
+        percentile_cutoff=0.95):
+    """
+    Identifies cells with a significant number of their subcellular compartments being abnormally shaped (
+    e.g., too large/small or too elongated) using the following steps:
+    1) scale all compartment shapes relative to wildtype and get p-values
+    2) select compartments with p-value < 0.05
+    3) aggregate by cell ID, calculate proportion of compartments with abnormal shape
+    4) get 95th percentile of outlier proportion from wildtype cells
+    5) get cells with outlier proportion greater than WT 95th percentile; these are the outliers
+    6) get pentrances, cell counts, strain hits
+
+    Args:
+        db_path (str): path to database with compartment and cell information
+        compartment_name (str): name of compartment being analyzed, should match what's in columns
+        feature_name (str): what shape feature to use when reading from database
+        plate (str): plate identifier for writing output file
+        proportions_dir (str): where to save spreadsheet with scaled feature for each object
+        scaled_feature_dir (str): where to save spreadsheet with scaled feature for each object
+        outlier_objects_dir (str): where to save spreadsheet with list of cells or outlier objects
+        penetrance_dir (str): where to save spreadsheet with strain penetrances for phenotype in question
+        cell_count_dir (str): where to save spreadsheet with cell counts for each strain
+        strain_hits_dir (str): where to save spreadsheet with hit strains
+        wt_pens_dir (str): where to save per-well wildtype penetrances
+        all_cells (pl.DataFrame): dataframe of all cells and their information
+        pval_cutoff (float, optional): p-value cutoff for identifying outliers; cells with p-value below this are tagged outlier
+        right_sided_outliers (bool): when set to true, only looks at cells with positive Z-Scores (indicating that they're above the wt distribution) when looking for outliers
+        percentile_cutoff (float): threshold to use for obtaining significant penetrance cutoff from wildtype distribution
+    """
+
+    if not os.path.exists(proportions_dir):
+        os.makedirs(proportions_dir)
+
+    if not os.path.exists(outlier_objects_dir):
+        os.makedirs(outlier_objects_dir)
+
+    # Step 1
+    conn = sqlite3.connect(db_path)
+    compartment_table = (
+        pl
+        .read_database(
+            query=f"""
+                     SELECT
+                        Replicate,
+                        Condition,
+                        Row,
+                        Column,
+                        Per_{compartment_name}.Cell_ID,
+                        ORF,
+                        Name,
+                        Strain_ID,
+                        Predicted_Label,
+                        {compartment_name}_{feature_name}
+                    FROM Per_{compartment_name}
+                    JOIN (SELECT Cell_ID, Predicted_Label FROM Per_Cell) pc
+                    ON pc.Cell_ID = Per_{compartment_name}.Cell_ID;
+                  """,
+            connection=conn
+        )
+    )
+    conn.close()
+
+    scaled_compartments = scale_compartment_feature(
+        db_path="",
+        table_name="",
+        feature_name=f"{compartment_name}_{feature_name}",
+        output_dir=scaled_feature_dir,
+        plate=plate,
+        compartment_name=compartment_name,
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        feature_table=compartment_table)
+
+    # Step 2
+    if right_sided_outliers:
+        scaled_compartments = (
+            scaled_compartments
+            .with_columns(
+                (
+                    pl
+                    .when((pl.col(f"{compartment_name}_{feature_name}_Scaled") > 0) & (pl.col("pval") < pval_cutoff))
+                    .then(True)
+                    .otherwise(False)
+                ).alias("Is_Outlier")
+            )
+        )
+
+    else:
+        scaled_compartments = (
+            scaled_compartments
+            .with_columns(
+                (
+                    pl
+                    .when((pl.col(f"{compartment_name}_{feature_name}_Scaled") < 0) & (pl.col("pval") < pval_cutoff))
+                    .then(True)
+                    .otherwise(False)
+                ).alias("Is_Outlier")
+            )
+        )
+
+    # Step 3
+    proportion_outlier_per_cell = (
+        scaled_compartments
+        .group_by(["Replicate", "Condition", "Row", "Column", "Cell_ID", "ORF", "Name", "Strain_ID", "Predicted_Label"])
+        .agg(
+            pl.len().alias("Num_Compartments"),
+            ((pl.col("Is_Outlier") == True).sum() / pl.len()).alias("Prop_Outlier")
+        )
+    )
+    proportion_outlier_per_cell.write_csv(
+        f"{proportions_dir}/{plate}_{compartment_name}_proportion_of_outlier_compartments.csv")
+
+    # Step 4, 5
+    cell_cycle_stages = ["G1", "SG2", "MAT"]
+
+    wildtype_outlier_proportions = proportion_outlier_per_cell.filter(pl.col("ORF").is_in(["YOR202W", "YMR271C"]))
+
+    cc_outliers = []
+    for cc_stage in cell_cycle_stages:
+        prop_95th_perc = wildtype_outlier_proportions.filter(pl.col("Predicted_Label") == cc_stage)
+        prop_95th_perc = prop_95th_perc["Prop_Outlier"].quantile(quantile=0.95, interpolation="nearest")
+
+        outlier_cells = (
+            proportion_outlier_per_cell
+            .filter(
+                (pl.col("Predicted_Label") == cc_stage) &
+                (pl.col("Prop_Outlier") > prop_95th_perc)
+            )
+        )
+
+        cc_outliers.append(outlier_cells)
+
+    outlier_objects = pl.concat(items=cc_outliers, how="vertical")
+    outlier_objects.write_csv(f"{outlier_objects_dir}/{plate}_{compartment_name}_outlier_cells.csv")
+
+    # Step 6
+    penetrance_table = calculate_strain_penetrances(
+        all_cells=all_cells,
+        all_outlier_cells=outlier_cells,
+        output_dir=penetrance_dir,
+        plate=plate,
+        compartment_name=compartment_name,
+        cell_cycle_stages=cell_cycle_stages)
+
+    tabulate_strain_cell_counts(
+        all_cells=all_cells,
+        all_outlier_cells=outlier_objects,
+        output_dir=cell_count_dir,
+        plate=plate,
+        compartment_name=compartment_name,
+        cell_cycle_stages=cell_cycle_stages)
+
+    get_strain_hits(
+        all_cells=all_cells,
+        outlier_cells=outlier_objects,
+        penetrance_table=penetrance_table,
+        wt_pens_dir=wt_pens_dir,
+        output_dir=strain_hits_dir,
+        plate=plate,
+        cc_stages=cell_cycle_stages,
+        percentile_cutoff=percentile_cutoff)
