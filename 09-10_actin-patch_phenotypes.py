@@ -15,8 +15,7 @@ from GEN_outlier_detection_functions import (scale_compartment_feature,
                                              combine_output_phenotypes_from_plate,
                                              tabulate_compartment_masks_per_strain,
                                              calculate_compartment_coverage,
-                                             calculate_compartment_distances,
-                                             combine_FracAtD_rings)
+                                             calculate_compartment_distances)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--database_path', default='', help='Path to .db file with CellProfiler features.')
