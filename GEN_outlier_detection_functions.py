@@ -916,7 +916,7 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
     for problem_phenotype in problem_phenotypes:
         per_phenotype_penetrance = (
             per_phenotype_penetrance
-            .with_columns(pl.lit(0).alias(f"Overall_{phenotype}_Penetrance"))
+            .with_columns(pl.lit(0).alias(f"Overall_{problem_phenotype}_Penetrance"))
         )
     per_phenotype_penetrance = per_phenotype_penetrance.select(select_list1)
 
@@ -953,7 +953,7 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
         for cc_stage in cc_stages:
             per_phenotype_cc_penetrance = (
                 per_phenotype_cc_penetrance
-                .with_columns(pl.lit(0).alias(f"{phenotype}_{cc_stage}_Penetrance"))
+                .with_columns(pl.lit(0).alias(f"{problem_phenotype}_{cc_stage}_Penetrance"))
             )
 
     for phenotype in original_phenotypes:
@@ -1373,6 +1373,7 @@ def get_shape_outliers_for_multi_foci_comps(
         wt_pens_dir,
         all_cells,
         pval_cutoff=0.05,
+        feature_value="",
         right_sided_outliers=True,
         percentile_cutoff=0.95):
     """
@@ -1399,6 +1400,7 @@ def get_shape_outliers_for_multi_foci_comps(
         wt_pens_dir (str): where to save per-well wildtype penetrances
         all_cells (pl.DataFrame): dataframe of all cells and their information
         pval_cutoff (float, optional): p-value cutoff for identifying outliers; cells with p-value below this are tagged outlier
+        feature_value (Optional(str, float)): if using exact feature value instead of p-val to get outliers, indicate it here. When right_sided_outliers is True, outliers will be cells with feature_name > feature value.
         right_sided_outliers (bool): when set to true, only looks at cells with positive Z-Scores (indicating that they're above the wt distribution) when looking for outliers
         percentile_cutoff (float): threshold to use for obtaining significant penetrance cutoff from wildtype distribution
     """
@@ -1435,42 +1437,74 @@ def get_shape_outliers_for_multi_foci_comps(
     )
     conn.close()
 
-    scaled_compartments = scale_compartment_feature(
-        db_path="",
-        table_name="",
-        feature_name=f"{compartment_name}_{feature_name}",
-        output_dir=scaled_feature_dir,
-        plate=plate,
-        compartment_name=compartment_name,
-        cell_cycle_stages=["G1", "SG2", "MAT"],
-        feature_table=compartment_table)
+    # Only scale if p-value being used for outlier detection
+    if isinstance(feature_value, str):
+        scaled_compartments = scale_compartment_feature(
+            db_path="",
+            table_name="",
+            feature_name=f"{compartment_name}_{feature_name}",
+            output_dir=scaled_feature_dir,
+            plate=plate,
+            compartment_name=compartment_name,
+            cell_cycle_stages=["G1", "SG2", "MAT"],
+            feature_table=compartment_table)
 
     # Step 2
-    if right_sided_outliers:
-        scaled_compartments = (
-            scaled_compartments
-            .with_columns(
-                (
-                    pl
-                    .when((pl.col(f"{compartment_name}_{feature_name}_Scaled") > 0) & (pl.col("pval") < pval_cutoff))
-                    .then(True)
-                    .otherwise(False)
-                ).alias("Is_Outlier")
+    if isinstance(feature_value, str):
+        if right_sided_outliers:
+            scaled_compartments = (
+                scaled_compartments
+                .with_columns(
+                    (
+                        pl
+                        .when((pl.col(f"{compartment_name}_{feature_name}_Scaled") > 0) & (pl.col("pval") < pval_cutoff))
+                        .then(True)
+                        .otherwise(False)
+                    ).alias("Is_Outlier")
+                )
             )
-        )
+
+        else:
+            scaled_compartments = (
+                scaled_compartments
+                .with_columns(
+                    (
+                        pl
+                        .when((pl.col(f"{compartment_name}_{feature_name}_Scaled") < 0) & (pl.col("pval") < pval_cutoff))
+                        .then(True)
+                        .otherwise(False)
+                    ).alias("Is_Outlier")
+                )
+            )
 
     else:
-        scaled_compartments = (
-            scaled_compartments
-            .with_columns(
-                (
-                    pl
-                    .when((pl.col(f"{compartment_name}_{feature_name}_Scaled") < 0) & (pl.col("pval") < pval_cutoff))
-                    .then(True)
-                    .otherwise(False)
-                ).alias("Is_Outlier")
+        if right_sided_outliers:
+            scaled_compartments = ( # the resulting table doesn't include feature values but it is named this way to make downstream functions more convenient
+                compartment_table
+                .with_columns(
+                    (
+                        pl
+                        .when(
+                            (pl.col(f"{compartment_name}_{feature_name}") > feature_value))
+                        .then(True)
+                        .otherwise(False)
+                    ).alias("Is_Outlier")
+                )
             )
-        )
+
+        else:
+            scaled_compartments = (
+                compartment_table
+                .with_columns(
+                    (
+                        pl
+                        .when(
+                            (pl.col(f"{compartment_name}_{feature_name}") < feature_value))
+                        .then(True)
+                        .otherwise(False)
+                    ).alias("Is_Outlier")
+                )
+            )
 
     # Step 3
     proportion_outlier_per_cell = (
