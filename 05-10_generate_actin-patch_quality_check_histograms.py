@@ -29,6 +29,8 @@ def create_qc_raw_df(database_directory, coordinates_path, qc_directory):
     qc_features = [
         "APs_AreaShape_Area",
         "APs_AreaShape_Perimeter",
+        "APs_AreaShape_Eccentricity",
+        "APs_AreaShape_Extent",
         "APs_Intensity_IntegratedIntensity_GFP"
     ]
 
