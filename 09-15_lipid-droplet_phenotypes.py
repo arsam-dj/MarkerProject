@@ -16,7 +16,7 @@ from GEN_outlier_detection_functions import (scale_compartment_feature,
                                              tabulate_compartment_masks_per_strain,
                                              calculate_compartment_coverage,
                                              calculate_compartment_distances,
-                                             get_shape_outliers_for_multi_foci_comps)
+                                             generate_comp_size_table)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--database_path', default='', help='Path to .db file with CellProfiler features.')
@@ -24,7 +24,6 @@ parser.add_argument('-o', '--output_directory', default='', help='Where to save 
 parser.add_argument('-p', '--plate', default='', help='Plate identifier for saving files.')
 
 args = parser.parse_args()
-
 
 if __name__ == '__main__':
 
@@ -182,46 +181,47 @@ if __name__ == '__main__':
 
 
 # ============================== LD SIZE (TOO SMALL/TOO LARGE) ==============================
-    # Identifying cells whose subcellular compartments have abnormal sizes isn't trivial in multi-foci
-    # compartments where there are many foci of varying sizes (hence noisy). Therefore, first I identify
-    # individual compartments notably large or small relative to WT sizes, and then I determine the % of
-    # compartments in every cell that have an abnormal size. I use the % of abnormally sized cells in WT to
-    # identify mutants with lots of small or large subcellular compartments. To prevent inflated % values,
-    # I will only consider cells with at least 4 subcellular compartments.
-
-    # large LDs
-    get_shape_outliers_for_multi_foci_comps(
+    ld_size_table = generate_comp_size_table(
         db_path=args.database_path,
-        compartment_name="LDs",
-        feature_name="AreaShape_Area",
-        plate=args.plate,
-        proportions_dir=f"{args.output_directory}/abnormal_ld_size/outlier_compartment_proportions",
+        comp_name="LDs")
+
+    # large LD
+    run_all_functions(
+        db_path=args.database_path,
+        all_cells=all_cells,
+        compartment_table_name="",
+        feature_name="LDs_AreaShape_Area",
         scaled_feature_dir=f"{args.output_directory}/abnormal_ld_size/scaled_features",
         outlier_objects_dir=f"{args.output_directory}/abnormal_ld_size/large_ld/outlier_cells",
         penetrance_dir=f"{args.output_directory}/abnormal_ld_size/large_ld/penetrances",
         cell_count_dir=f"{args.output_directory}/abnormal_ld_size/large_ld/cell_counts",
         strain_hits_dir=f"{args.output_directory}/abnormal_ld_size/large_ld/strain_hits",
         wt_pens_dir=f"{args.output_directory}/abnormal_ld_size/large_ld/per_well_wt_pens",
-        all_cells=all_cells,
-        pval_cutoff=0.05,
+        plate=args.plate,
+        compartment_name="LDs",
+        feature_table=ld_size_table,
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
         percentile_cutoff=0.95)
 
-    # small LDs
-    get_shape_outliers_for_multi_foci_comps(
+    # small LD
+    run_all_functions(
         db_path=args.database_path,
-        compartment_name="LDs",
-        feature_name="AreaShape_Area",
-        plate=args.plate,
-        proportions_dir=f"{args.output_directory}/abnormal_ld_size/outlier_compartment_proportions",
+        all_cells=all_cells,
+        compartment_table_name="",
+        feature_name="LDs_AreaShape_Area",
         scaled_feature_dir=f"{args.output_directory}/abnormal_ld_size/scaled_features",
         outlier_objects_dir=f"{args.output_directory}/abnormal_ld_size/small_ld/outlier_cells",
         penetrance_dir=f"{args.output_directory}/abnormal_ld_size/small_ld/penetrances",
         cell_count_dir=f"{args.output_directory}/abnormal_ld_size/small_ld/cell_counts",
         strain_hits_dir=f"{args.output_directory}/abnormal_ld_size/small_ld/strain_hits",
         wt_pens_dir=f"{args.output_directory}/abnormal_ld_size/small_ld/per_well_wt_pens",
-        all_cells=all_cells,
-        pval_cutoff=0.05,
+        plate=args.plate,
+        compartment_name="LDs",
+        feature_table=ld_size_table,
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
         percentile_cutoff=0.95)
 
