@@ -1567,3 +1567,41 @@ def get_shape_outliers_for_multi_foci_comps(
         plate=plate,
         cc_stages=cell_cycle_stages,
         percentile_cutoff=percentile_cutoff)
+
+
+def generate_comp_size_table(db_path, comp_name):
+    """
+    Creates a table with cell/comp info and <comp>_AreaShape_Area for all comps so they can be scaled later.
+
+    Args:
+        db_path (str): path to database with compartment and cell information
+        comp_name (str): name of compartment for selecting compartment table
+
+    Returns:
+        pl.DataFrame with <comp>_AreaShape_Area feature for all comps
+    """
+    conn = sqlite3.connect(db_path)
+    all_comp_areas = (
+        pl
+        .read_database(
+            query=f"""SELECT 
+                        Replicate, 
+                        Condition, 
+                        Row, 
+                        Column, 
+                        Per_{comp_name}.Cell_ID,
+                        {comp_name}_Number_Object_Number, 
+                        ORF, 
+                        Name, 
+                        Strain_ID, 
+                        Predicted_Label, 
+                        {comp_name}_AreaShape_Area 
+                      FROM Per_{comp_name}
+                      JOIN (SELECT Cell_ID, Predicted_Label FROM Per_Cell) pc
+                        ON Per_{comp_name}.Cell_ID = pc.Cell_ID;""",
+            connection=conn
+        )
+    )
+    conn.close()
+
+    return all_comp_areas
