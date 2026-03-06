@@ -75,11 +75,12 @@ def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_pat
 
 def get_all_strain_hits(phenotype_dir):
     paths = Path(phenotype_dir).rglob("all_hit_strains.csv")
+    good_paths = [pl.read_csv(p) for p in paths if pl.read_csv(p).shape[0] > 0] # only keep dataframes that have at least one row
 
     sig_strains = (
         pl
         .concat(
-            (pl.read_csv(p) for p in paths), how="vertical"
+            good_paths, how="vertical"
         )
         .filter(~pl.col("ORF").is_in(["YOR202W", "YMR271C"]))
         .select("Strain_ID")
