@@ -71,7 +71,7 @@ def create_qc_raw_df(database_directory, coordinates_path, qc_directory):
         .drop(["Center_X", "Center_Y"]) # interested in peroxisome centers, not cell
         .join(qc_df, on=["Cell_ID"])
     )
-    qc_df.write_csv(file=f"{qc_directory}/raw_peroxisome_qc_features.csv")
+    qc_df.write_csv(file=f"{qc_directory}/raw_peroxisomes_qc_features.csv")
 
     return qc_df
 
@@ -85,18 +85,16 @@ if __name__ == '__main__':
         coordinates_path=args.cell_coordinates,
         qc_directory=args.qc_directory)
 
-    features_to_plot = (
-        qc_df_raw
-        .rename({
-            "Peroxisomes_AreaShape_Perimeter": "Peroxisomes_AreaShape_Perimeter",
-            "Peroxisomes_AreaShape_Area": "Peroxisomes_AreaShape_Area"
-        })
-        .drop(["Cell_ID", "Image_Path", "Center_X", "Center_Y", "Peroxisomes_Number_Object_Number"])
-    )
+    # I have to create each histogram individually rather than as a matrix because the long df generated in feature_distributions_matrix
+    # gets so massive that it crashes the script.
+    for feature in ["Peroxisomes_AreaShape_Area", "Peroxisomes_AreaShape_Perimeter",
+                    "Peroxisomes_AreaShape_Eccentricity", "Peroxisomes_AreaShape_Extent",
+                    "Peroxisomes_Intensity_IntegratedIntensity_GFP", "IInt_Norm"]:
+        features_to_plot = qc_df_raw.select([feature])
 
-    feature_distributions_matrix(
-        qc_features=features_to_plot,
-        qc_directory=args.qc_directory,
-        output_figure_name="Peroxisomes_qc_feature_distributions")
+        feature_distributions_matrix(
+            qc_features=features_to_plot,
+            qc_directory=args.qc_directory,
+            output_figure_name=f"{feature}_distributions")
 
     print("Complete.")
