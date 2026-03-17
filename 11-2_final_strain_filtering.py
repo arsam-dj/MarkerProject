@@ -63,10 +63,6 @@ def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_pat
                 pl.col(["Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3"]).is_null()
             ).alias("Num_Null_Dists")
         )
-        .drop(
-            ["Total_Num_Cells_R1", "Total_Num_Cells_R2", "Total_Num_Cells_R3",
-             "Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3"]
-        )
         .join(penetrances, on=["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"])
     )
 
@@ -120,29 +116,65 @@ if __name__ == '__main__':
     sheetB = (
         sheetA
         .filter(
-            ~pl.col("Strain_ID").is_in(wildtype_strains["Strain"].to_list()),
-            ~pl.col("ORF").is_in(orfs_near_marker["ORF"].to_list()),
-            pl.col("ORF").is_in(all_orfs_to_keep["ORF"].to_list()),
+            ~pl.col("Strain_ID").is_in(wildtype_strains["Strain"]),
+            ~pl.col("ORF").is_in(orfs_near_marker["ORF"]),
+            pl.col("ORF").is_in(all_orfs_to_keep["ORF"]),
             pl.col("Num_Null_Dists") != 3
         )
-        .drop("Num_Null_Dists")
     )
-    sheetA = sheetA.drop("Num_Null_Dists")
 
-    # Sheet C: above + no cases below 51 cell count
+
+    # Sheet C: above + no cases with < 51 total cell count + no cases with < 20 cells in any of their reps + no cases
+    # with too much variation in rep-rep pens
     sheetC = (
         sheetB
-        .filter(pl.col("Total_Num_Cells") >= int(args.min_num_cells))
+        .with_columns(pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std().alias("Std_Distance"))
+        .filter(
+            (pl.col("Total_Num_Cells") >= int(args.min_num_cells)),
+            (pl.col("Total_Num_Cells_R1") >= 20),
+            (pl.col("Total_Num_Cells_R2") >= 20),
+            (pl.col("Total_Num_Cells_R3") >= 20),
+            (pl.col("Std_Distance") <= 5)
+        )
+        .drop("Std_Distance")
     )
     
-    # Sheet D: above + no nonsig strains
+    # Sheet D: above + no nonsig strains + min. penetrance is greater than 95th perc. of wt strains
     sig_strains = get_all_strain_hits(args.phenotype_directory)
+    wt_strains = (
+        sheetA
+        .filter(
+            pl.col("Strain_ID").is_in(wildtype_strains["Strain"]),
+            pl.col("Num_Null_Dists") != 3
+        )
+        .with_columns(pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std().alias("Std_Distance"))
+        .filter(
+            (pl.col("Total_Num_Cells") >= int(args.min_num_cells)),
+            (pl.col("Total_Num_Cells_R1") >= 20),
+            (pl.col("Total_Num_Cells_R2") >= 20),
+            (pl.col("Total_Num_Cells_R3") >= 20),
+            (pl.col("Std_Distance") <= 5)
+        )
+    )
+
     sheetD = (
         sheetC
-        .filter(pl.col("Strain_ID").is_in(sig_strains))
+        .filter(
+            (pl.col("Strain_ID").is_in(sig_strains)),
+            (pl.col("Overall_Penetrance") >= wt_strains["Overall_Penetrance"].quantile(0.05))
+        )
     )
 
     # Export
+    dropped_cols = ["Num_Null_Dists",
+                    "Total_Num_Cells_R1", "Total_Num_Cells_R2", "Total_Num_Cells_R3",
+                    "Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3"]
+
+    sheetA = sheetA.drop(dropped_cols)
+    sheetB = sheetB.drop(dropped_cols)
+    sheetC = sheetC.drop(dropped_cols)
+    sheetD = sheetD.drop(dropped_cols)
+
     with pd.ExcelWriter(f"{args.output_directory}/{args.screen}_filtered_strains.xlsx", engine="openpyxl") as writer:
         sheetA.to_pandas().to_excel(writer, sheet_name="SheetA", index=False)
         sheetB.to_pandas().to_excel(writer, sheet_name="SheetB", index=False)
