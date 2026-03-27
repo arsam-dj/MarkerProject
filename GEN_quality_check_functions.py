@@ -221,6 +221,10 @@ def delete_problematic_compartment_masks(db_path, filtered_comps, comp_name, out
         cursor.execute(delete_query)
         cursor.execute(update_query)
 
+        cursor.execute("DROP INDEX idx_temp_table;")
+        cursor.execute("DROP INDEX idx_per_comps;")
+
+
     # Delete all masks belonging to a given cell, regardless of whether it's problematic
     else:
         delete_query = f"""
@@ -236,10 +240,9 @@ def delete_problematic_compartment_masks(db_path, filtered_comps, comp_name, out
         cursor.execute(delete_query)
         cursor.execute(update_query)
 
-    conn.commit()
-    cursor.execute("DROP INDEX idx_temp_table;")
-    cursor.execute("DROP INDEX idx_per_comps;")
     cursor.execute("DROP TABLE IF EXISTS temp_table;")
+    conn.commit()
+
 
     # Vacuum database
     cursor.execute("VACUUM;")
