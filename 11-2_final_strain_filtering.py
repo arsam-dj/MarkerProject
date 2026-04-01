@@ -15,9 +15,9 @@ parser.add_argument('-o', '--output_directory', default='', help='Where to save 
 args = parser.parse_args()
 
 # Sheet A: everything
-# Sheet B: Sheet B: no WT, no ORFs near marker/HTA2/CAN1/LYP1, no dubious ORFs, no strains with info from only one rep
-# Sheet C: above + no cases below 51 cell count
-# Sheet D: above + no nonsig strains
+# Sheet B: no WT, no ORFs near marker/HTA2/CAN1/LYP1, no dubious ORFs, no strains with info from only one rep
+# Sheet C: above + no cases with < 51 total cell count + no cases with < 20 cells in any of their reps + no cases with too much variation in rep-rep pens
+# Sheet D: above + no nonsig strains + min. penetrance is greater than 95th perc. of wt strains
 
 
 def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_path):
