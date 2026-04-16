@@ -69,10 +69,18 @@ def delete_parentless_objects(compartment_db, tables):
 
 
 if __name__ == '__main__':
-    delete_parentless_objects(
-        compartment_db=args.database_path,
-        tables={"Per_Nuclei": "Image_Count_Nuclei", args.compartment_table: args.compartment_image_column}
-    )
+
+    if args.compartment_table != '':
+        delete_parentless_objects(
+            compartment_db=args.database_path,
+            tables={"Per_Nuclei": "Image_Count_Nuclei", args.compartment_table: args.compartment_image_column}
+        )
+
+    else:
+        delete_parentless_objects(
+            compartment_db=args.database_path,
+            tables={"Per_Nuclei": "Image_Count_Nuclei"}
+        )
 
     print("Complete.")
 
