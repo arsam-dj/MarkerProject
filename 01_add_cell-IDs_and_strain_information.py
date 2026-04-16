@@ -267,6 +267,7 @@ if __name__ == '__main__':
     )
 
     add_cell_ids_to_comp_table(path_to_db=args.database_path, table_src="Per_Cell", table_dst="Per_Nuclei", col_src="Cell_Number_Object_Number", col_dst="Nuclei_Parent_Cell")
-    add_cell_ids_to_comp_table(path_to_db=args.database_path, table_src="Per_Cell", table_dst=args.comp_table, col_src="Cell_Number_Object_Number", col_dst=args.comp_column)
+    if args.comp_table != '':
+        add_cell_ids_to_comp_table(path_to_db=args.database_path, table_src="Per_Cell", table_dst=args.comp_table, col_src="Cell_Number_Object_Number", col_dst=args.comp_column)
 
     print("Complete.")
