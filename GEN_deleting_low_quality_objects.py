@@ -60,11 +60,19 @@ if __name__ == '__main__':
         .to_list()
     )
     # Delete low quality objects from all tables (compartments of low quality objects are deleted too)
-    delete_low_quality_objects(
-        db_path=args.database_path,
-        tables={"Per_Cell": "Image_Count_Cell", "Per_Nuclei": "Image_Count_Nuclei", args.compartment_table: args.compartment_image_column},
-        cell_ids=cell_ids
-    )
+    if args.compartment_table != '':
+        delete_low_quality_objects(
+            db_path=args.database_path,
+            tables={"Per_Cell": "Image_Count_Cell", "Per_Nuclei": "Image_Count_Nuclei", args.compartment_table: args.compartment_image_column},
+            cell_ids=cell_ids
+        )
+
+    else:
+        delete_low_quality_objects(
+            db_path=args.database_path,
+            tables={"Per_Cell": "Image_Count_Cell", "Per_Nuclei": "Image_Count_Nuclei"},
+            cell_ids=cell_ids
+        )
 
     # Vacuum database
     conn = sqlite3.connect(args.database_path)
