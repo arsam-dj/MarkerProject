@@ -1605,3 +1605,38 @@ def generate_comp_size_table(db_path, comp_name):
     conn.close()
 
     return all_comp_areas
+
+
+def generate_iint_norm_table(db_path):
+    """
+    Creates a table with normalized integrated intensity for every cell to get an understanding of
+    overall intensity without size effects.
+
+    Args:
+        db_path (str): path to database with cell information
+
+    Returns:
+        pl.DataFrame with IInt_Norm feature for all comps
+    """
+    conn = sqlite3.connect(db_path)
+    iint_norms = (
+        pl
+        .read_database(
+            query=f"""SELECT 
+                        Replicate, 
+                        Condition, 
+                        Row, 
+                        Column, 
+                        Cell_ID,
+                        ORF, 
+                        Name, 
+                        Strain_ID, 
+                        Predicted_Label, 
+                        Cell_Intensity_IntegratedIntensity_GFP / Cell_AreaShape_Area AS IInt_Norm
+                      FROM Per_Cell;""",
+            connection=conn
+        )
+    )
+    conn.close()
+
+    return iint_norms
