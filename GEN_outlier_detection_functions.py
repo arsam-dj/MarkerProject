@@ -1640,3 +1640,79 @@ def generate_iint_norm_table(db_path):
     conn.close()
 
     return iint_norms
+
+
+def generate_filtered_cell_feature_table(db_path, feature, comp_name):
+    """
+    Creates a table with a feature of interest for every cell so they can be scaled later. Excludes
+    cells with comps removed through QC.
+
+    Args:
+        db_path (str): path to database with compartment and cell information
+        feature (str): name of feature of interest
+        comp_name (str): name of compartment
+
+    Returns:
+        pl.DataFrame with feature of interest for all cells whose number of compartment masks is not -1.
+    """
+    conn = sqlite3.connect(db_path)
+    feature_table = (
+        pl
+        .read_database(
+            query=f"""SELECT 
+                        Replicate, 
+                        Condition, 
+                        Row, 
+                        Column, 
+                        Cell_ID,
+                        ORF, 
+                        Name, 
+                        Strain_ID, 
+                        Predicted_Label, 
+                        {feature}
+                      FROM Per_Cell
+                      WHERE Cell_Children_{comp_name}_Count != -1;""",
+            connection=conn
+        )
+    )
+    conn.close()
+
+    return feature_table
+
+
+def generate_comp_iint_norm_table(db_path, comp_name):
+    """
+    Creates a table with cell/comp info and <comp>_AreaShape_Area for all comps so they can be scaled later.
+
+    Args:
+        db_path (str): path to database with compartment and cell information
+        comp_name (str): name of compartment for selecting compartment table
+
+    Returns:
+        pl.DataFrame with <comp>_AreaShape_Area feature for all comps
+    """
+    conn = sqlite3.connect(db_path)
+    all_comp_iint_norms = (
+        pl
+        .read_database(
+            query=f"""SELECT 
+                        Replicate, 
+                        Condition, 
+                        Row, 
+                        Column, 
+                        Per_{comp_name}.Cell_ID,
+                        {comp_name}_Number_Object_Number, 
+                        ORF, 
+                        Name, 
+                        Strain_ID, 
+                        Predicted_Label, 
+                        {comp_name}_Intensity_IntegratedIntensity_GFP / {comp_name}_AreaShape_Area AS IInt_Norm 
+                      FROM Per_{comp_name}
+                      JOIN (SELECT Cell_ID, Predicted_Label FROM Per_Cell) pc
+                        ON Per_{comp_name}.Cell_ID = pc.Cell_ID;""",
+            connection=conn
+        )
+    )
+    conn.close()
+
+    return all_comp_iint_norms
