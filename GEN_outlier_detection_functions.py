@@ -229,17 +229,21 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
         # Get cell counts for calculating overall penetrance
         all_strain_outlier_cells = (
             all_outlier_cells
+            .select(["Strain_ID", "Cell_ID"])
             .filter(
                 (pl.col("Strain_ID") == strain)
             )
+            .unique()
             .height
         )
 
         all_strain_cells = (
             all_cells
+            .select(["Strain_ID", "Cell_ID"])
             .filter(
                 (pl.col("Strain_ID") == strain)
             )
+            .unique()
             .height
         )
 
@@ -252,23 +256,27 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
         for replicate in replicates:
             all_strain_rep_outlier_cells = (
                 all_outlier_cells
+                .select(["Replicate", "Strain_ID", "Cell_ID"])
                 .filter(
                     (pl.col("Strain_ID") == strain) &
                     (pl.col("Replicate") == replicate)
                 )
+                .unique()
                 .height
             )
 
             all_strain_rep_cells = (
                 all_cells
+                .select(["Replicate", "Strain_ID", "Cell_ID"])
                 .filter(
                     (pl.col("Strain_ID") == strain) &
                     (pl.col("Replicate") == replicate)
                 )
+                .unique()
                 .height
             )
 
-            # Calculate overall penetrance
+            # Calculate per-replicate penetrance
             try:
                 penetrance_dict[f"Overall_{replicate}_Penetrance"].append(
                     all_strain_rep_outlier_cells / all_strain_rep_cells)
@@ -279,19 +287,23 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
 
             all_strain_outlier_cc_cells = (
                 all_outlier_cells
+                .select(["Strain_ID", "Predicted_Label", "Cell_ID"])
                 .filter(
                     (pl.col("Strain_ID") == strain) &
                     (pl.col("Predicted_Label") == cc_stage)
                 )
+                .unique()
                 .height
             )
 
             all_strain_cc_cells = (
                 all_cells
+                .select(["Strain_ID", "Predicted_Label", "Cell_ID"])
                 .filter(
                     (pl.col("Strain_ID") == strain) &
                     (pl.col("Predicted_Label") == cc_stage)
                 )
+                .unique()
                 .height
             )
 
@@ -306,21 +318,25 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
 
                 all_strain_outlier_cc_rep_cells = (
                     all_outlier_cells
+                    .select(["Replicate", "Strain_ID", "Predicted_Label", "Cell_ID"])
                     .filter(
                         (pl.col("Strain_ID") == strain) &
                         (pl.col("Predicted_Label") == cc_stage) &
                         (pl.col("Replicate") == replicate)
                     )
+                    .unique()
                     .height
                 )
 
                 all_strain_cc_rep_cells = (
                     all_cells
+                    .select(["Replicate", "Strain_ID", "Predicted_Label", "Cell_ID"])
                     .filter(
                         (pl.col("Strain_ID") == strain) &
                         (pl.col("Predicted_Label") == cc_stage) &
                         (pl.col("Replicate") == replicate)
                     )
+                    .unique()
                     .height
                 )
                 # Calculate cell cycle stage penetrance for replicate
@@ -391,99 +407,114 @@ def tabulate_strain_cell_counts(all_cells, all_outlier_cells, output_dir, plate,
         cell_count_dict["Name"].append(all_cells.filter(pl.col("Strain_ID") == strain)["Name"].item(0))
         cell_count_dict["Strain_ID"].append(strain)
 
-        # Get cell counts for calculating overall penetrance
+        # Get overall cell counts
         all_strain_outlier_cells = (
             all_outlier_cells
+            .select(["Strain_ID", "Cell_ID"])
             .filter(
                 (pl.col("Strain_ID") == strain)
             )
+            .unique()
             .height
         )
 
         all_strain_cells = (
             all_cells
+            .select(["Strain_ID", "Cell_ID"])
             .filter(
                 (pl.col("Strain_ID") == strain)
             )
+            .unique()
             .height
         )
 
-        # Calculate overall penetrance
         cell_count_dict[f"Total_Cells"].append(all_strain_cells)
         cell_count_dict[f"Total_Outlier_Cells"].append(all_strain_outlier_cells)
 
+        # Get replicate cell counts
         for replicate in replicates:
             all_strain_rep_outlier_cells = (
                 all_outlier_cells
+                .select(["Replicate", "Strain_ID", "Cell_ID"])
                 .filter(
                     (pl.col("Strain_ID") == strain) &
                     (pl.col("Replicate") == replicate)
                 )
+                .unique()
                 .height
             )
 
             all_strain_rep_cells = (
                 all_cells
+                .select(["Replicate", "Strain_ID", "Cell_ID"])
                 .filter(
                     (pl.col("Strain_ID") == strain) &
                     (pl.col("Replicate") == replicate)
                 )
+                .unique()
                 .height
             )
 
-            # Calculate overall penetrance
             cell_count_dict[f"Total_{replicate}_Cells"].append(all_strain_rep_cells)
             cell_count_dict[f"Total_{replicate}_Outlier_Cells"].append(all_strain_rep_outlier_cells)
 
+        # Get cell cycle cell counts
         for cc_stage in cell_cycle_stages:
-
             all_strain_outlier_cc_cells = (
                 all_outlier_cells
+                .select(["Strain_ID", "Predicted_Label", "Cell_ID"])
                 .filter(
                     (pl.col("Strain_ID") == strain) &
                     (pl.col("Predicted_Label") == cc_stage)
                 )
+                .unique()
                 .height
             )
 
             all_strain_cc_cells = (
                 all_cells
+                .select(["Strain_ID", "Predicted_Label", "Cell_ID"])
                 .filter(
                     (pl.col("Strain_ID") == strain) &
                     (pl.col("Predicted_Label") == cc_stage)
                 )
+                .unique()
                 .height
             )
 
-            # Calculate overall cell cycle stage penetrance
             cell_count_dict[f"Total_{cc_stage}_Cells"].append(all_strain_cc_cells)
             cell_count_dict[f"Total_{cc_stage}_Outlier_Cells"].append(all_strain_outlier_cc_cells)
 
+            # Get replicate x CC stage cell counts
             for replicate in replicates:
                 all_strain_outlier_cc_rep_cells = (
                     all_outlier_cells
+                    .select(["Replicate", "Strain_ID", "Predicted_Label", "Cell_ID"])
                     .filter(
                         (pl.col("Strain_ID") == strain) &
                         (pl.col("Predicted_Label") == cc_stage) &
                         (pl.col("Replicate") == replicate)
                     )
+                    .unique()
                     .height
                 )
 
                 all_strain_cc_rep_cells = (
                     all_cells
+                    .select(["Replicate", "Strain_ID", "Predicted_Label", "Cell_ID"])
                     .filter(
                         (pl.col("Strain_ID") == strain) &
                         (pl.col("Predicted_Label") == cc_stage) &
                         (pl.col("Replicate") == replicate)
                     )
+                    .unique()
                     .height
                 )
-                # Calculate cell cycle stage penetrance for replicate
+
                 cell_count_dict[f"{replicate}_{cc_stage}_Cells"].append(all_strain_cc_rep_cells)
                 cell_count_dict[f"{replicate}_{cc_stage}_Outlier_Cells"].append(all_strain_outlier_cc_rep_cells)
 
-    # Export penetrance dataframe
+    # Export cell count dataframe
     (
         pl
         .DataFrame(cell_count_dict)
@@ -617,7 +648,7 @@ def run_all_functions(
         percentile_cutoff=0.95):
     """
     Runs all functions (scale_compartment_feature(), identify_outlier_cells(), calculate_strain_penetrances(),
-    tabulate_strain_cell_counts(), tabulate_strain_cell_counts(), get_strain_hits()) at once.
+    tabulate_strain_cell_counts(), get_strain_hits()) at once.
 
     Args:
         db_path (str): path to database being processed
@@ -747,11 +778,14 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
         .group_by(["Replicate", "Row", "Column", "Cell_ID", "ORF", "Name", "Strain_ID", "Predicted_Label"])
         .agg(
             pl.col("Cell_Phenotype"),
-            pl.len().alias("Num_Cell_Phenotypes")
+            pl.col("Cell_Phenotype").n_unique().alias("Num_Cell_Phenotypes")
         )
         .with_columns(
-            pl.format("{}",
-                      pl.col("Cell_Phenotype").cast(pl.List(pl.String)).list.join(" | "))
+            pl.col("Cell_Phenotype")
+            .cast(pl.List(pl.String))
+            #.list.unique()  # leaving this out so I can still see how many non-unique phenotypes happening in cell
+            .list.join(" | ")
+            .alias("Cell_Phenotype")
         )
         .select(
             pl.lit(plate_num).alias("Plate"),
@@ -899,7 +933,7 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
     per_phenotype_penetrance = (
         all_data
         .group_by(["Replicate", "ORF", "Name", "Strain_ID", "Row", "Column", "Cell_Phenotype"])
-        .agg(pl.len().alias("Num_Outliers"))
+        .agg(pl.col("Cell_ID").n_unique().alias("Num_Outliers"))
         .join(cell_counts_no_cc, on=["Replicate", "Row", "Column", "ORF", "Name", "Strain_ID"], how="right")
         .with_columns(pl.col("Num_Outliers").fill_null(0))
         .group_by(["ORF", "Name", "Strain_ID", "Row", "Column", "Cell_Phenotype"])
@@ -932,7 +966,7 @@ def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir
     per_phenotype_cc_penetrance = (
         all_data
         .group_by(["Replicate", "ORF", "Name", "Strain_ID", "Row", "Column", "Predicted_Label", "Cell_Phenotype"])
-        .agg(pl.len().alias("Num_Outliers"))
+        .agg(pl.col("Cell_ID").n_unique().alias("Num_Outliers"))
         .join(cell_counts_with_cc, on=["Replicate", "Row", "Column", "ORF", "Name", "Strain_ID", "Predicted_Label"],
               how="right")
         .with_columns(pl.col("Num_Outliers").fill_null(0))
