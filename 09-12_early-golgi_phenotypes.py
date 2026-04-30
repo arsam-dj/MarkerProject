@@ -16,7 +16,8 @@ from GEN_outlier_detection_functions import (scale_compartment_feature,
                                              tabulate_compartment_masks_per_strain,
                                              calculate_compartment_coverage,
                                              calculate_compartment_distances,
-                                             generate_comp_size_table)
+                                             generate_comp_size_table,
+                                             generate_filtered_cell_feature_table)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--database_path', default='', help='Path to .db file with CellProfiler features.')
@@ -46,6 +47,12 @@ if __name__ == '__main__':
         plate=args.plate,
         output_directory=f"{args.output_directory}/abnormal_eg_count/eg_count_tables")
 
+    comp_nums_table = generate_filtered_cell_feature_table(
+        db_path=args.database_path,
+        feature="Cell_Children_EGs_Count",
+        comp_name="EGs"
+    )
+
     # many EGs
     run_all_functions(
         db_path=args.database_path,
@@ -60,7 +67,7 @@ if __name__ == '__main__':
         wt_pens_dir=f"{args.output_directory}/abnormal_eg_count/many_eg/per_well_wt_pens",
         plate=args.plate,
         compartment_name="EGs",
-        feature_table="",
+        feature_table=comp_nums_table,
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
@@ -80,7 +87,7 @@ if __name__ == '__main__':
         wt_pens_dir=f"{args.output_directory}/abnormal_eg_count/few_eg/per_well_wt_pens",
         plate=args.plate,
         compartment_name="EGs",
-        feature_table="",
+        feature_table=comp_nums_table,
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,

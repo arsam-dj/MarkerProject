@@ -36,7 +36,7 @@ if __name__ == '__main__':
         compartment_name="Mitochondria",
         plate=args.plate,
         output_directory=f"{args.output_directory}/abnormal_mitochondria_count/mitochondria_count_tables")
-    
+
     comp_nums_table = generate_filtered_cell_feature_table(
         db_path=args.database_path,
         feature = "Cell_Children_Mitochondria_Count",
@@ -122,7 +122,7 @@ if __name__ == '__main__':
         feature = "Cell_Intensity_StdIntensity_GFP",
         comp_name="Mitochondria"
     )
-    
+
     # low uniformity
     run_all_functions(
         db_path=args.database_path,
@@ -162,11 +162,11 @@ if __name__ == '__main__':
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
         percentile_cutoff=0.95)
-    
+
 
 # ============================== BRIGHT MITOCHONDRIA ==============================
     iint_norm_table = generate_comp_iint_norm_table(
-        db_path=args.database_path, 
+        db_path=args.database_path,
         comp_name="Mitochondria")
 
     # bright mitochondria
@@ -203,6 +203,5 @@ if __name__ == '__main__':
         db_path=args.database_path,
         output_dir=args.output_directory,
         plate=args.plate)
-
 
     print("Complete")
