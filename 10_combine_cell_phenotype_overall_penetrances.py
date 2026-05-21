@@ -9,6 +9,7 @@ parser.add_argument('-c', '--cell_outliers', default='', help='Path to csv file 
 parser.add_argument('-s', '--subcellular_outliers', default='', help='Path to csv file with all subcellular compartment outliers.')
 parser.add_argument('-o', '--output_dir', default='', help='Where to save output file with combined penetrances.')
 parser.add_argument('-d', '--database_dir', default='', help='Path to directory with all screen databases.')
+parser.add_argument('-n', '--file_suffix', default='', help='Optional string to append to end of file name.')
 
 args = parser.parse_args()
 
@@ -66,7 +67,7 @@ def get_total_cell_counts(database_dir):
     return combined_cell_counts
 
 
-def combine_penetrances(cell_outliers_path, subcellular_outliers_path, total_cell_counts, output_dir):
+def combine_penetrances(cell_outliers_path, subcellular_outliers_path, total_cell_counts, output_dir, file_suffix=""):
     """
     Given whole-cell and subcellular compartment penetrances, combines them and calculates a final overall penetrance
 
@@ -75,6 +76,7 @@ def combine_penetrances(cell_outliers_path, subcellular_outliers_path, total_cel
         subcellular_outliers_path (str): path to csv file with all subcellular outliers
         total_cell_counts (pl.DataFrame): dataframe with total cell counts for all strains
         output_dir (str): where to save output file
+        file_suffix (str, Optional): optional string to append to end of file name
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -157,10 +159,16 @@ def combine_penetrances(cell_outliers_path, subcellular_outliers_path, total_cel
         [cell_pens, subcell_pens, overall_pens]
     )
 
+    if file_suffix:
+        file_name = f"{output_dir}/cell_subcell_combined_pens.csv"
+    else:
+        file_name = f"{output_dir}/cell_subcell_combined_pens_{file_suffix}.csv"
+
     (
         combined_pens
         .sort(["Combined_Penetrance"], descending=True)
-        .write_csv(f"{output_dir}/cell_subcell_combined_pens.csv"))
+        .write_csv(file_name)
+    )
     
 
 if __name__ == '__main__':
@@ -171,6 +179,8 @@ if __name__ == '__main__':
         cell_outliers_path=args.cell_outliers,
         subcellular_outliers_path=args.subcellular_outliers,
         total_cell_counts=total_cell_counts,
-        output_dir=args.output_dir)
+        output_dir=args.output_dir,
+        file_suffix=args.file_suffix
+    )
 
     print("Complete.")
