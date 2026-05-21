@@ -1750,3 +1750,42 @@ def generate_comp_iint_norm_table(db_path, comp_name):
     conn.close()
 
     return all_comp_iint_norms
+
+
+def generate_compartment_feature_table(db_path, feature, comp_name):
+    """
+    Creates a table with a feature of interest for every compartment so they can be scaled later. Predicted CC
+    labels from Per_Cell are joined to this table.
+
+    Args:
+        db_path (str): path to database with compartment and cell information
+        feature (str): name of feature of interest
+        comp_name (str): name of compartment
+
+    Returns:
+        pl.DataFrame with cell cycle labe and feature of interest for all compartments.
+    """
+    conn = sqlite3.connect(db_path)
+    feature_table = (
+        pl
+        .read_database(
+            query=f"""SELECT 
+                        Replicate, 
+                        Condition, 
+                        Row, 
+                        Column, 
+                        Per_{comp_name}.Cell_ID,
+                        ORF, 
+                        Name, 
+                        Strain_ID, 
+                        Predicted_Label, 
+                        {feature}
+                      FROM Per_{comp_name}
+                      JOIN (SELECT Cell_ID, Predicted_Label FROM Per_Cell) pc
+                        ON Per_{comp_name}.Cell_ID = pc.Cell_ID;""",
+            connection=conn
+        )
+    )
+    conn.close()
+
+    return feature_table
