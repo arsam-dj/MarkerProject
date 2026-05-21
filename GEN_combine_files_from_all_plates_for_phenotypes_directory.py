@@ -60,33 +60,7 @@ if __name__ == '__main__':
 
         tsa_df = (
             tsa_df
-            .rename(
-                {"Total_TS1_Cells": "Total_R1_Cells",
-                 "Total_TS1_Outlier_Cells": "Total_R1_Outlier_Cells",
-                 "Total_TS2_Cells": "Total_R2_Cells",
-                 "Total_TS2_Outlier_Cells": "Total_R2_Outlier_Cells",
-                 "Total_TS3_Cells": "Total_R3_Cells",
-                 "Total_TS3_Outlier_Cells": "Total_R3_Outlier_Cells",
-                 "TS1_G1_Cells": "R1_G1_Cells",
-                 "TS1_G1_Outlier_Cells": "R1_G1_Outlier_Cells",
-                 "TS2_G1_Cells": "R2_G1_Cells",
-                 "TS2_G1_Outlier_Cells": "R2_G1_Outlier_Cells",
-                 "TS3_G1_Cells": "R3_G1_Cells",
-                 "TS3_G1_Outlier_Cells": "R3_G1_Outlier_Cells",
-                 "TS1_SG2_Cells": "R1_SG2_Cells",
-                 "TS1_SG2_Outlier_Cells": "R1_SG2_Outlier_Cells",
-                 "TS2_SG2_Cells": "R2_SG2_Cells",
-                 "TS2_SG2_Outlier_Cells": "R2_SG2_Outlier_Cells",
-                 "TS3_SG2_Cells": "R3_SG2_Cells",
-                 "TS3_SG2_Outlier_Cells": "R3_SG2_Outlier_Cells",
-                 "TS1_MAT_Cells": "R1_MAT_Cells",
-                 "TS1_MAT_Outlier_Cells": "R1_MAT_Outlier_Cells",
-                 "TS2_MAT_Cells": "R2_MAT_Cells",
-                 "TS2_MAT_Outlier_Cells": "R2_MAT_Outlier_Cells",
-                 "TS3_MAT_Cells": "R3_MAT_Cells",
-                 "TS3_MAT_Outlier_Cells": "R3_MAT_Outlier_Cells",
-                 }
-            )
+            .select(pl.all().name.replace(r"TS", "R")) # replace TS in column names with R
         )
 
         (
@@ -121,24 +95,7 @@ if __name__ == '__main__':
 
         tsa_df = (
             tsa_df
-            .rename(
-                {"Overall_TS1_Penetrance": "Overall_R1_Penetrance",
-                 "Overall_TS2_Penetrance": "Overall_R2_Penetrance",
-                 "Overall_TS3_Penetrance": "Overall_R3_Penetrance",
-
-                 "TS1_G1_Penetrance": "R1_G1_Penetrance",
-                 "TS2_G1_Penetrance": "R2_G1_Penetrance",
-                 "TS3_G1_Penetrance": "R3_G1_Penetrance",
-
-                 "TS1_SG2_Penetrance": "R1_SG2_Penetrance",
-                 "TS2_SG2_Penetrance": "R2_SG2_Penetrance",
-                 "TS3_SG2_Penetrance": "R3_SG2_Penetrance",
-
-                 "TS1_MAT_Penetrance": "R1_MAT_Penetrance",
-                 "TS2_MAT_Penetrance": "R2_MAT_Penetrance",
-                 "TS3_MAT_Penetrance": "R3_MAT_Penetrance",
-                 }
-            )
+            .select(pl.all().name.replace(r"TS", "R"))
         )
 
         (
