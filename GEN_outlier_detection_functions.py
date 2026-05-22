@@ -1641,13 +1641,14 @@ def generate_comp_size_table(db_path, comp_name):
     return all_comp_areas
 
 
-def generate_iint_norm_table(db_path):
+def generate_iint_norm_table(db_path, channel="GFP"):
     """
     Creates a table with normalized integrated intensity for every cell to get an understanding of
     overall intensity without size effects.
 
     Args:
         db_path (str): path to database with cell information
+        channel (str): whether to look at GFP or RFP channel; GFP by default
 
     Returns:
         pl.DataFrame with IInt_Norm feature for all comps
@@ -1666,7 +1667,7 @@ def generate_iint_norm_table(db_path):
                         Name, 
                         Strain_ID, 
                         Predicted_Label, 
-                        Cell_Intensity_IntegratedIntensity_GFP / Cell_AreaShape_Area AS IInt_Norm
+                        Cell_Intensity_IntegratedIntensity_{channel} / Cell_AreaShape_Area AS IInt_Norm
                       FROM Per_Cell;""",
             connection=conn
         )
