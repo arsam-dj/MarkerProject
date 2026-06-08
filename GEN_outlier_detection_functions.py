@@ -81,8 +81,7 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
                     )
                 )
 
-                if wt_cc_comps.shape[
-                    0] < 2:  # Check if there are any wildtypes on plates (some plates don't have enough controls)
+                if wt_cc_comps.shape[0] < 2:  # Check if there are any wildtypes on plates (some plates don't have enough controls)
                     print(
                         f"Skipping {plate} - {condition}C - {replicate} - {cc_stage} due to insufficient number of wildtype controls.")
                     continue
