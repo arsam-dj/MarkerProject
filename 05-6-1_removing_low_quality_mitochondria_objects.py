@@ -9,7 +9,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--database_path', default='', help='Path to .db file with CellProfiler features.')
 parser.add_argument('-q', '--qc_directory', default='', help='Path to directory to write quality check files to.')
 parser.add_argument('-c', '--qc_compartment_features', default='', help='Path to file with Cell_IDs and per-compartment QC features.')
-parser.add_argument('-C', '--qc_cell_features', default='', help='Path to file with Cell_IDs and per-cell QC features.')
 parser.add_argument('-p', '--plate', default='', help='Number for identifying plate being processed.')
 parser.add_argument('-x', '--delete_all_comps', default='False', help='Specify if all other compartments in a cell with a single problematic mask should also be deleted (True). False by default.')
 
@@ -22,7 +21,7 @@ if __name__ == '__main__':
         os.makedirs(args.qc_directory)
 
     # Load mitochondria features and get problematic mitochondria masks
-    lg_to_remove = ( 
+    mito_to_remove = ( 
         pl
         .read_csv(args.qc_compartment_features)
         .filter(
@@ -35,7 +34,7 @@ if __name__ == '__main__':
     # 2) percentage of cells that got filtered out for each strain
     delete_problematic_compartment_masks(
         db_path=args.database_path,
-        filtered_comps=lg_to_remove,
+        filtered_comps=mito_to_remove,
         comp_name="Mitochondria",
         output_dir=args.qc_directory,
         plate=args.plate,

@@ -69,7 +69,7 @@ def create_qc_raw_df_mito(database_directory, coordinates_path, qc_directory):
     qc_df = (
         pl
         .read_csv(coordinates_path)
-        .drop(["Center_X", "Center_Y"]) # interested in LG centers, not cell
+        .drop(["Center_X", "Center_Y"]) # interested in mito centers, not cell
         .join(qc_df, on=["Cell_ID"])
     )
     qc_df.write_csv(file=f"{qc_directory}/raw_mito_qc_features.csv")
@@ -140,8 +140,8 @@ if __name__ == '__main__':
     if not os.path.exists(args.qc_directory):
         os.makedirs(args.qc_directory)
 
-    # Per-LG mask QC
-    qc_df_raw_lgs = create_qc_raw_df_mito(
+    # Per-Mitochondria mask QC
+    qc_df_raw_mito = create_qc_raw_df_mito(
         database_directory=args.database_directory,
         coordinates_path=args.cell_coordinates,
         qc_directory=args.qc_directory)
@@ -150,7 +150,7 @@ if __name__ == '__main__':
                     "Mitochondria_Intensity_IntegratedIntensity_GFP", "IInt_Norm",
                     "Mitochondria_AreaShape_Eccentricity", "Mitochondria_AreaShape_MajorAxisLength",
                     "Mitochondria_AreaShape_Solidity"]:
-        features_to_plot = qc_df_raw_lgs.select([feature])
+        features_to_plot = qc_df_raw_mito.select([feature])
 
         feature_distributions_matrix(
             qc_features=features_to_plot,
