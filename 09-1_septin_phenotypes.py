@@ -385,6 +385,66 @@ if __name__ == '__main__':
         plate=args.plate,
         cc_stages=["G1", "SG2", "MAT"],
         percentile_cutoff=0.95)
+
+
+# ============================== UNDEFINED PHENOTYPE ==============================
+# Septins have a lot of technical issues where any potentially real defect has ten fake defects
+# behind it. QC was difficult for this reason and a lot of potentially interesting defects got filtered
+# out. I reason that any strain with a large number of its septins filtered out is probably displaying a 
+# real (undefined) defect.
+
+    conn = sqlite3.connect(args.database_path)
+    outlier_objects = (
+        pl
+        .read_database(
+            query="""
+                SELECT
+	                Replicate, 
+	                Condition, 
+	                Row, 
+	                Column, 
+	                Per_Cell.Cell_ID, 
+	                ORF, 
+	                Name, 
+	                Strain_ID, 
+	                Predicted_Label,
+	                Cell_Children_Septins_Count
+                FROM Per_Cell
+                WHERE (Cell_Children_Septins_Count = -1);""",
+            connection=conn
+        )
+    )
+    conn.close()
+    
+    if not os.path.exists(f"{args.output_directory}/undefined_phenotype/outlier_cells"):
+        os.makedirs(f"{args.output_directory}/undefined_phenotype/outlier_cells")
+    outlier_objects.write_csv(f"{args.output_directory}/undefined_phenotype/outlier_cells/{args.plate}_Septins_outlier_cells.csv")
+    
+    penetrance_table = calculate_strain_penetrances(
+        all_cells=all_cells,
+        all_outlier_cells=outlier_objects,
+        output_dir=f"{args.output_directory}/undefined_phenotype/penetrances",
+        plate=args.plate,
+        compartment_name="Septins",
+        cell_cycle_stages=["G1", "SG2", "MAT"])
+
+    tabulate_strain_cell_counts(
+        all_cells=all_cells,
+        all_outlier_cells=outlier_objects,
+        output_dir=f"{args.output_directory}/undefined_phenotype/cell_counts",
+        plate=args.plate,
+        compartment_name="Septins",
+        cell_cycle_stages=["G1", "SG2", "MAT"])
+
+    get_strain_hits(
+        all_cells=all_cells,
+        outlier_cells=outlier_objects,
+        penetrance_table=penetrance_table,
+        wt_pens_dir=f"{args.output_directory}/undefined_phenotype/per_well_wt_pens",
+        output_dir=f"{args.output_directory}/undefined_phenotype/strain_hits",
+        plate=args.plate,
+        cc_stages=["G1", "SG2", "MAT"],
+        percentile_cutoff=0.95)
     
     
 # ============================== COMBINE PHENOTYPES ==============================
@@ -396,7 +456,8 @@ if __name__ == '__main__':
             "LargeSeptin": f"{args.output_directory}/abnormal_septin_size/large_septin/outlier_cells/{args.plate}_Septins_outlier_cells.csv",
             "SmallSeptin": f"{args.output_directory}/abnormal_septin_size/small_septin/outlier_cells/{args.plate}_Septins_outlier_cells.csv",
             "Misoriented": f"{args.output_directory}/abnormal_septin_orientation/outlier_cells/{args.plate}_Septins_outlier_cells.csv",
-            "Misformed": f"{args.output_directory}/septin_fragmentation/outlier_cells/{args.plate}_Septins_outlier_cells.csv"
+            "Misformed": f"{args.output_directory}/septin_fragmentation/outlier_cells/{args.plate}_Septins_outlier_cells.csv",
+            "Undefined": f"{args.output_directory}/undefined_phenotype/outlier_cells/{args.plate}_Septins_outlier_cells.csv"
         },
         db_path=args.database_path,
         output_dir=args.output_directory,
