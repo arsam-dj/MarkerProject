@@ -30,7 +30,9 @@ def create_qc_raw_df_septins(database_directory, coordinates_path, qc_directory)
         "Septins_AreaShape_Area",
         "Septins_AreaShape_Perimeter",
         "Septins_AreaShape_Eccentricity",
-        "Septins_AreaShape_Extent"
+        "Septins_AreaShape_Extent",
+        "Septins_AreaShape_MajorAxisLength",
+        "Septins_AreaShape_MinorAxisLength"
     ]
 
     # Read all plate databases and get cell info + qc feature columns, combine
@@ -217,7 +219,8 @@ if __name__ == '__main__':
         qc_directory=args.qc_directory)
 
     for feature in ["Septins_AreaShape_Area", "Septins_AreaShape_Perimeter",
-                    "Septins_AreaShape_Eccentricity", "Septins_AreaShape_Extent"]:
+                    "Septins_AreaShape_Eccentricity", "Septins_AreaShape_Extent",
+                    "Septins_AreaShape_MajorAxisLength", "Septins_AreaShape_MinorAxisLength"]:
         features_to_plot = qc_df_raw_septins.select([feature])
 
         feature_distributions_matrix(

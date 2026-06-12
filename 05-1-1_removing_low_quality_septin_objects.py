@@ -32,7 +32,9 @@ if __name__ == '__main__':
             (pl.col('Septins_AreaShape_Area') <= 30) |
             (pl.col('Septins_AreaShape_Perimeter') >= 85) |
             (pl.col('Septins_AreaShape_Perimeter') <= 20) |
-            (pl.col('Septins_AreaShape_Extent') <= 0.25)
+            (pl.col('Septins_AreaShape_Extent') <= 0.25) |
+            (pl.col('Septins_AreaShape_MajorAxisLength') >= 40) |
+            (pl.col('Septins_AreaShape_MinorAxisLength') >= 20)
         )
         .select(["Cell_ID", "Septins_Number_Object_Number"])
     )
