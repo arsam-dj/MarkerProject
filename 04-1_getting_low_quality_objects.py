@@ -38,9 +38,7 @@ def save_filtered_objects(db_path, filtered_cells, output_path, plate):
                         Strain_ID
                     FROM Per_Cell 
                     WHERE 
-                        Cell_ID IN ({cells}) 
-                        OR Cell_Children_Nuclei_Count > 2 
-                        OR Cell_Children_Nuclei_Count = 0
+                        Cell_ID IN ({cells})
                         OR ORF = 'BLANK'
                  """
         (
@@ -98,6 +96,32 @@ def save_filtered_objects(db_path, filtered_cells, output_path, plate):
             pl
             .read_database(query=query2, connection=conn)
         )
+        
+        # Nop10 TS_26C/37C Plate_04/05 only have TS1. To account for this, I've duplicated the perc_filtered_df and changed
+        # Replicate to TS2/TS3 and set cell counts/percentages to 0 so the remainder of this code runs.
+        possible_reps = ["TS1", "TS2", "TS3"]
+        missing_reps = [missing_rep for missing_rep in possible_reps if missing_rep not in perc_filtered_df["Replicate"].unique()]
+        
+        if missing_reps:
+            perc_filtered_dfs = [perc_filtered_df]
+            for missing_rep in missing_reps:
+                dummy_df = (
+                    perc_filtered_df
+                    .with_columns(
+                        pl.lit(missing_rep).alias("Replicate"),
+                        pl.lit(0, dtype=pl.Int64).alias("Total_Num_Cells"),
+                        pl.lit(0, dtype=pl.Int64).alias("Filtered_Num_Cells"),
+                        pl.lit(0, dtype=pl.Int64).alias("New_Total_Num_Cells"),
+                        pl.lit(0, dtype=pl.Float64).alias("Percent_Filtered")
+                    )
+                )
+                
+                perc_filtered_dfs.append(dummy_df)
+            
+            perc_filtered_df = pl.concat(perc_filtered_dfs, how="vertical")
+        
+        
+        # Rename TS1/2/3 with R1/2/3 so these dataframes can be merged with DMA dataframes
         if "TS1" in perc_filtered_df["Replicate"] or "TS2" in perc_filtered_df["Replicate"] or "TS3" in perc_filtered_df["Replicate"]:
             perc_filtered_df = (
                 perc_filtered_df
@@ -180,21 +204,21 @@ if __name__ == '__main__':
     filtered_cells = (
         all_data
         .filter(
-            (pl.col('Cell_AreaShape_Area') <= -2) | (pl.col('Cell_AreaShape_Area') >= 4.75) |
-            (pl.col('Cell_AreaShape_Perimeter') <= -2) | (pl.col('Cell_AreaShape_Perimeter') >= 4.25) |
-            (pl.col('Cell_AreaShape_MajorAxisLength') <= -2) | (pl.col('Cell_AreaShape_MajorAxisLength') >= 4.5) |
-            (pl.col('Cell_AreaShape_MinorAxisLength') <= -3) | (pl.col('Cell_AreaShape_MinorAxisLength') >= 4.25) |
-            (pl.col('Cell_AreaShape_FormFactor') <= -4) | (pl.col('Cell_AreaShape_FormFactor') >= 1.5) |
-            (pl.col('Cell_AreaShape_Extent') <= -4) |
-            (pl.col('Cell_AreaShape_Compactness') >= 4.75) |
-            (pl.col('Cell_AreaShape_MaxFeretDiameter') <= -2) | (pl.col('Cell_AreaShape_MaxFeretDiameter') >= 4.5) |
-            (pl.col('Cell_AreaShape_MinFeretDiameter') <= -3) | (pl.col('Cell_AreaShape_MinFeretDiameter') >= 4.25) |
-            (pl.col('Area_Over_Perimeter') <= -3) | (pl.col('Area_Over_Perimeter') >= 4) |
-            (pl.col('MajorAxisLength_Over_MinorAxisLength') >= 5) |
-            (pl.col('MaxFeretDiameter_Over_MinFeretDiameter') >= 5) |
+            (pl.col('Cell_AreaShape_Area') <= -2) | (pl.col('Cell_AreaShape_Area') >= 6.5) |
+            (pl.col('Cell_AreaShape_Perimeter') <= -2) | (pl.col('Cell_AreaShape_Perimeter') >= 5.25) |
+            (pl.col('Cell_AreaShape_MajorAxisLength') <= -2) | (pl.col('Cell_AreaShape_MajorAxisLength') >= 6.75) |
+            (pl.col('Cell_AreaShape_MinorAxisLength') <= -2.25) | (pl.col('Cell_AreaShape_MinorAxisLength') >= 6.75) |
+            (pl.col('Cell_AreaShape_Eccentricity') >= 2.8) |
+            (pl.col('Cell_AreaShape_FormFactor') <= -5.25) | (pl.col('Cell_AreaShape_FormFactor') >= 1.5) |
+            (pl.col('Cell_AreaShape_Extent') <= -5.5) |
+            (pl.col('Cell_AreaShape_Compactness') <= -1.25) | (pl.col('Cell_AreaShape_Compactness') >= 5.75) |
+            (pl.col('Cell_AreaShape_MaxFeretDiameter') <= -2) | (pl.col('Cell_AreaShape_MaxFeretDiameter') >= 6.75) |
+            (pl.col('Cell_AreaShape_MinFeretDiameter') <= -2.25) | (pl.col('Cell_AreaShape_MinFeretDiameter') >= 6.75) |
+            (pl.col('Area_Over_Perimeter') <= -2) | (pl.col('Area_Over_Perimeter') >= 5) |
             (pl.col('Trilobed') >= 0.008) |
-            (pl.col('Nuclei_Distance_Minimum_Cell') <= 4) | (pl.col('Nuclei_Distance_Minimum_Cell') >= 18) |
-            (pl.col('Nuclear_Area_Over_Cell_Area') >= 0.6)
+            (pl.col('Asymmetric') >= 0.11) |
+            (pl.col('Nuclei_Distance_Minimum_Cell') <= 7) | (pl.col('Nuclei_Distance_Minimum_Cell') >= 25) |
+            (pl.col('Nuclear_Area_Over_Cell_Area') <= 0.05) | (pl.col('Nuclear_Area_Over_Cell_Area') >= 0.6)
         )
         .select("Cell_ID")
         .to_series()
