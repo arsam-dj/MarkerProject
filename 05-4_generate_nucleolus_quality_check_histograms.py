@@ -1,0 +1,93 @@
+import argparse
+import os
+import polars as pl
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+import sqlite3
+
+from GEN_quality_check_functions import feature_distributions_matrix
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-q', '--qc_directory', default='', help='Path to directory to write quality check files to.')
+parser.add_argument('-d', '--database_directory', default='', help='Path to directory with all databases.')
+parser.add_argument('-x', '--cell_coordinates', default='', help='Path to file with all cell overlay coordinates.')
+
+args = parser.parse_args()
+
+
+# Function for creating dataframes with QC features of interest and paths to segmentation masks for manual assessments
+def create_qc_raw_df_nucleolus(database_directory, coordinates_path, qc_directory):
+    """
+    Create a dataframe with nucleoli from all three reps, as well as QC features of interest. Includes the
+    segmentation mask paths so they can be viewed with Single Cell Tool.
+
+    Args:
+        database_directory (str): path to directory with all plate databases
+        coordinates_path (str): path to file with cell overlay coordinates
+        qc_directory (str): path to directory to write qc files to
+    """
+    qc_features = [
+        "Nucleolus_AreaShape_Area",
+        "Nucleolus_AreaShape_Perimeter",
+        "Nucleolus_Parent_Nuclei"
+    ]
+
+    # Read all plate databases and get cell info + qc feature columns, combine
+    databases = [f"{database_directory}/{db_name}" for db_name in os.listdir(database_directory)]
+    qc_dfs = []
+
+    for db_path in databases:
+        conn = sqlite3.connect(db_path)
+
+        plate_qc_df = pl.read_database(
+            query=f"""
+                    SELECT 
+                        Cell_ID, 
+                        Nucleolus_AreaShape_Center_X AS Center_X,
+                        Nucleolus_AreaShape_Center_Y AS Center_Y,
+                        Nucleolus_Number_Object_Number,
+                        {', '.join(qc_features)}
+                    FROM Per_Nucleolus;
+                    """,
+            connection=conn)
+        qc_dfs.append(plate_qc_df)
+
+        conn.close()
+
+    qc_df = (
+        pl
+        .concat(items=qc_dfs, how="vertical")
+    )
+
+    # Add segmentation mask paths
+    qc_df = (
+        pl
+        .read_csv(coordinates_path)
+        .drop(["Center_X", "Center_Y"]) # interested in nucleolus centers, not cell
+        .join(qc_df, on=["Cell_ID"])
+    )
+    qc_df.write_csv(file=f"{qc_directory}/raw_nucleolus_qc_features.csv")
+
+    return qc_df
+
+
+if __name__ == '__main__':
+    if not os.path.exists(args.qc_directory):
+        os.makedirs(args.qc_directory)
+
+    # Per-Nucleolus mask QC
+    qc_df_raw_nucleolus = create_qc_raw_df_nucleolus(
+        database_directory=args.database_directory,
+        coordinates_path=args.cell_coordinates,
+        qc_directory=args.qc_directory)
+
+    for feature in ["Nucleolus_AreaShape_Area", "Nucleolus_AreaShape_Perimeter"]:
+        features_to_plot = qc_df_raw_nucleolus.select([feature])
+
+        feature_distributions_matrix(
+            qc_features=features_to_plot,
+            qc_directory=args.qc_directory,
+            output_figure_name=f"{feature}_distributions")
+
+    
+    print("Complete.")
