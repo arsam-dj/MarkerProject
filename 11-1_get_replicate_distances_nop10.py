@@ -13,6 +13,72 @@ parser.add_argument('-o', '--output_directory', default='', help='Where to save 
 
 args = parser.parse_args()
 
+def get_duplicate_strains_from_v1(v1_coords_path, v2_coords_path):
+    """
+    Nop10 TS1 mapping sheet is different from TS2/3 mapping sheet. I've decided to address this by dropping any strains
+    present in v1 mapping sheet that do not have a corresponding plate/row/column coordinate to the v2 mapping sheet. To put it 
+    another way, the v1 and v2 mapping sheets are mostly the same, but v1 has a lot of duplicate strains (v2 only has unique
+    strains). I only consider strains in v1 that overlap in their coordinates with v2. Other duplicate copies of a strain
+    that have no overlapping coordinates are dropped.
+    
+    For example, strain ts223 is found in plate 1 row 6 column 13 in v1 and v2. However, v1 also has ts223 in plate 3 row 1 
+    column 6 (duplicate copy). Since coordinates of the second ts223 don't match what's in v2, it's dropped and only the 
+    first ts223 is saved for further analysis.
+    
+    Args:
+        v1_coords_path (str): path to v1 coordinates
+        v2_coords_path (str): path to v2 coordinates
+    
+    Returns:
+        pl.DataFrame of v1_coordinates with unwanted duplicates filtered out
+    """
+    
+    # Load the two mapping sheets
+    v1 = (
+        pl
+        .read_csv(v1_coords_path)
+        .with_columns(
+            (pl.col("Plate").cast(pl.String).str.zfill(2).alias("Plate")),
+            (pl.col("Row").cast(pl.String).str.zfill(3).alias("Row")),
+            (pl.col("Column").cast(pl.String).str.zfill(3).alias("Column"))
+            )
+    )
+
+    v2 = (
+        pl
+        .read_csv(v2_coords_path)
+        .with_columns(
+            (pl.col("Plate").cast(pl.String).str.zfill(2).alias("Plate")),
+            (pl.col("Row").cast(pl.String).str.zfill(3).alias("Row")),
+            (pl.col("Column").cast(pl.String).str.zfill(3).alias("Column"))
+            )
+        )
+    
+    # Identify duplicate strains in v1
+    v1_filtered = v1.filter(~pl.col("Name").is_in(["HIS3", "BLANK"]))
+    v1_duplicated_strains = v1_filtered.select(["ORF", "Name", "Strain_ID"]).filter(v1_filtered["Strain_ID"].is_duplicated())
+    
+    # filter v2 so it only has v1 duplicated strains
+    v2_filtered = v2.filter(pl.col("Strain_ID").is_in(v1_duplicated_strains["Strain_ID"]))
+
+    # the goal is to remove strains from v1 that have no matching plate/row/column
+    # to achive this, remove from v1_duplicated_strains rows that are present in v2_filtered
+    v1_rows_to_remove = (
+        v1
+        .filter(pl.col("Strain_ID").is_in(v1_duplicated_strains["Strain_ID"]))
+        .join(v2_filtered, on=["ORF", "Name", "Allele", "Plate", "Row", "Column"], how="left")
+        .filter(pl.col("Strain_ID_right").is_null())
+        .drop("Strain_ID_right")
+    )
+    
+    # filter out unwanted rows from the original v1 dataframe
+    v1_filtered = (
+        v1
+        .join(v1_rows_to_remove, on=["ORF", "Name", "Allele", "Plate", "Row", "Column"], how="anti")
+        )
+    
+    return v1_filtered, v1_rows_to_remove
+    
 
 def modify_nop10_strain_coords(strain_dataframe):
     """
@@ -29,6 +95,27 @@ def modify_nop10_strain_coords(strain_dataframe):
     Returns: 
         pl.DataFrame with 'fixed' coordinates for TS1 strains
     """
+    
+    # Before starting, remove unwanted strains from strain_dataframe (duplicate strains in v1 that don't have corresponding 
+    # coordinates with v2...see get_duplicate_strains_from_v1() for more information)
+    _, strains_to_remove = get_duplicate_strains_from_v1(
+        v1_coords_path="/home/alex/alex_files/markerproject_redux/array_mapping_files/TS-Array-Morphology-v1-384.csv",
+        v2_coords_path="/home/alex/alex_files/markerproject_redux/array_mapping_files/TS-Array-Morphology-v2-384.csv"
+    )
+    
+    strains_to_remove_26C = strains_to_remove.with_columns((pl.col("Strain_ID") + "-26C").alias("Strain_ID")).drop("Allele")
+    strains_to_remove_37C = strains_to_remove.with_columns((pl.col("Strain_ID") + "-37C").alias("Strain_ID")).drop("Allele")
+    strains_to_remove = pl.concat([strains_to_remove_26C, strains_to_remove_37C], how="vertical")
+    
+    strain_dataframe = (
+        strain_dataframe
+        .with_columns(
+            (pl.col("Plate").cast(pl.String).str.zfill(2).alias("Plate")),
+            (pl.col("Row").cast(pl.String).str.zfill(3).alias("Row")),
+            (pl.col("Column").cast(pl.String).str.zfill(3).alias("Column"))
+            )
+        .join(strains_to_remove, on=["ORF", "Name", "Plate", "Row", "Column"], how="anti")
+        )
 
     unchanged_plates = strain_dataframe.filter(pl.col("Replicate").is_in(["R1", "R2", "R3", "TS2", "TS3"])) # unchanged
     tsa1_plates = strain_dataframe.filter(pl.col("Replicate").is_in(["TS1"])) # to be changed
@@ -38,30 +125,15 @@ def modify_nop10_strain_coords(strain_dataframe):
         .select(["Plate", "Row", "Column", "Strain_ID"])
         .filter(pl.col("Plate").is_in([1, 2, 3]))
         .with_columns(
-            pl.col("Plate")
-            .cast(pl.String)
-            .str.zfill(2)
-            .alias("Plate")
-        )
+            (pl.col("Plate").cast(pl.String).str.zfill(2).alias("Plate")),
+            (pl.col("Row").cast(pl.String).str.zfill(3).alias("Row")),
+            (pl.col("Column").cast(pl.String).str.zfill(3).alias("Column"))
+            )
         .unique()
-    )
+        )
 
-    mapping_coords_26C = (
-        mapping_coords
-        .with_columns(
-            (pl.col("Strain_ID") + "-26C")
-            .alias("Strain_ID")
-            )
-    )
-
-    mapping_coords_37C = (
-        mapping_coords
-        .with_columns(
-            (pl.col("Strain_ID") + "-37C")
-            .alias("Strain_ID")
-            )
-    )
-
+    mapping_coords_26C = mapping_coords.with_columns((pl.col("Strain_ID") + "-26C").alias("Strain_ID"))
+    mapping_coords_37C = mapping_coords.with_columns((pl.col("Strain_ID") + "-37C").alias("Strain_ID"))
     mapping_coords = pl.concat([mapping_coords_26C, mapping_coords_37C])
 
     ts1_plates_remapped = (
@@ -72,7 +144,15 @@ def modify_nop10_strain_coords(strain_dataframe):
     )
 
 
-    strain_dataframe = pl.concat([unchanged_plates, ts1_plates_remapped])
+    strain_dataframe = (
+        pl
+        .concat([unchanged_plates, ts1_plates_remapped])
+        .with_columns(
+            (pl.col("Plate").cast(pl.Int64).alias("Plate")),
+            (pl.col("Row").cast(pl.Int64).alias("Row")),
+            (pl.col("Column").cast(pl.Int64).alias("Column"))
+            )
+        )
     
     return strain_dataframe
     
