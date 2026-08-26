@@ -34,13 +34,16 @@ def get_total_cell_counts(database_dir):
             .read_database(
                 query="""
                         SELECT
+                            Plate,
+                            Row,
+                            Column,
 	                        ORF,
 	                        Name,
 	                        Strain_ID,
 	                        COUNT(Cell_ID) AS Total_Cells
                         FROM
                         	Per_Cell
-                        GROUP BY ORF, Name, Strain_ID
+                        GROUP BY Plate, Row, Column, ORF, Name, Strain_ID;
                       """,
                 connection=conn
             )
@@ -50,7 +53,12 @@ def get_total_cell_counts(database_dir):
                     .when(pl.col("Name").is_null())
                     .then(pl.lit(""))
                     .otherwise(pl.col("Name"))
-                ).alias("Name")
+                    ).alias("Name")
+                )
+            .with_columns(
+                pl.col("Plate").cast(pl.String).str.zfill(2).alias("Plate"),
+                pl.col("Row").cast(pl.String).str.zfill(3).alias("Row"),
+                pl.col("Column").cast(pl.String).str.zfill(3).alias("Column")
             )
         )
         conn.close()
@@ -60,8 +68,6 @@ def get_total_cell_counts(database_dir):
     combined_cell_counts = (
         pl
         .concat(cell_counts_dfs, how="vertical")
-        .group_by(["ORF", "Name", "Strain_ID"])
-        .agg(pl.col("Total_Cells").sum().alias("Total_Cells")) # Combines all wildtypes together
     )
 
     return combined_cell_counts
@@ -85,28 +91,38 @@ def combine_penetrances(cell_outliers_path, subcellular_outliers_path, total_cel
     cell_outliers = (
         pl
         .read_csv(cell_outliers_path)
-        .select(["ORF", "Name", "Strain_ID", "Cell_ID"])
+        .select(["Plate", "Row", "Column", "ORF", "Name", "Strain_ID", "Cell_ID"])
         .with_columns(
             (
                 pl
                 .when(pl.col("Name").is_null())
                 .then(pl.lit(""))
                 .otherwise(pl.col("Name"))
-            ).alias("Name")
+                ).alias("Name")
+            )
+        .with_columns(
+            pl.col("Plate").cast(pl.String).str.zfill(2).alias("Plate"),
+            pl.col("Row").cast(pl.String).str.zfill(3).alias("Row"),
+            pl.col("Column").cast(pl.String).str.zfill(3).alias("Column")
         )
     )
 
     subcellular_outliers = (
         pl
         .read_csv(subcellular_outliers_path)
-        .select(["ORF", "Name", "Strain_ID", "Cell_ID"])
+        .select(["Plate", "Row", "Column", "ORF", "Name", "Strain_ID", "Cell_ID"])
         .with_columns(
             (
                 pl
                 .when(pl.col("Name").is_null())
                 .then(pl.lit(""))
                 .otherwise(pl.col("Name"))
-            ).alias("Name")
+                ).alias("Name")
+            )
+        .with_columns(
+            pl.col("Plate").cast(pl.String).str.zfill(2).alias("Plate"),
+            pl.col("Row").cast(pl.String).str.zfill(3).alias("Row"),
+            pl.col("Column").cast(pl.String).str.zfill(3).alias("Column")
         )
     )
 
@@ -119,43 +135,43 @@ def combine_penetrances(cell_outliers_path, subcellular_outliers_path, total_cel
     # Calculate cell, subcellular, and combined penetrances
     cell_pens = (
         cell_outliers
-        .group_by(["ORF", "Name", "Strain_ID"])
+        .group_by(["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"])
         .len(name="Cell_Outliers")
-        .join(total_cell_counts, on=["ORF", "Name", "Strain_ID"], how="left")
+        .join(total_cell_counts, on=["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"], how="left")
         .with_columns(
             (pl.col("Cell_Outliers") / pl.col("Total_Cells") * 100)
             .alias("Cell_Penetrance")
         )
-        .select(["ORF", "Name", "Strain_ID", "Cell_Penetrance"])
+        .select(["Plate", "Row", "Column", "ORF", "Name", "Strain_ID", "Cell_Penetrance"])
     )
 
     subcell_pens = (
         subcellular_outliers
-        .group_by(["ORF", "Name", "Strain_ID"])
+        .group_by(["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"])
         .len(name="Subcellular_Outliers")
-        .join(total_cell_counts, on=["ORF", "Name", "Strain_ID"], how="left")
+        .join(total_cell_counts, on=["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"], how="left")
         .with_columns(
             (pl.col("Subcellular_Outliers") / pl.col("Total_Cells") * 100)
             .alias("Subcellular_Penetrance")
         )
-        .select(["ORF", "Name", "Strain_ID", "Subcellular_Penetrance"])
+        .select(["Plate", "Row", "Column", "ORF", "Name", "Strain_ID", "Subcellular_Penetrance"])
     )
 
     overall_pens = (
         all_outliers
-        .group_by(["ORF", "Name", "Strain_ID"])
+        .group_by(["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"])
         .len(name="All_Outliers")
-        .join(total_cell_counts, on=["ORF", "Name", "Strain_ID"], how="left")
+        .join(total_cell_counts, on=["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"], how="left")
         .with_columns(
             (pl.col("All_Outliers") / pl.col("Total_Cells") * 100)
             .alias("Combined_Penetrance")
         )
-        .select(["ORF", "Name", "Strain_ID", "Combined_Penetrance"])
+        .select(["Plate", "Row", "Column", "ORF", "Name", "Strain_ID", "Combined_Penetrance"])
     )
 
     # Join all penetrances
     combined_pens = reduce(
-        lambda left, right: left.join(right, on=["ORF", "Name", "Strain_ID"], how="left"),
+        lambda left, right: left.join(right, on=["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"], how="left"),
         [cell_pens, subcell_pens, overall_pens]
     )
 
