@@ -3,7 +3,6 @@ import os
 import polars as pl
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-d', '--classified_cells_directory', default='', help='Directory with files that have all cells and their cell cycle prediction for each plate.')
 parser.add_argument('-c', '--combined_cells', default='', help='Path to file with all cells and their cell cycle classification.')
 parser.add_argument('-o', '--output_directory', default='', help='Directory for writing output files.')
 parser.add_argument('-x', '--cell_coordinates', default='', help='Path to file with all cell overlay coordinates.')
