@@ -101,6 +101,8 @@ Some scripts are run on each plate individually (e.g., ```01_add_cell-IDs_and_st
 
 More information about each script is provided below.
 
+---
+
 
 ### Part 0. Activate Conda Environment
 
@@ -240,7 +242,7 @@ $ python 05-4_generate_nucleolus_quality_check_histograms.py -q <quality_check_d
 $ python /home/alex/alex_files/markerproject_redux/scripts/05-4_generate_nucleolus_quality_check_histograms.py -q /home/alex/alex_files/markerproject_redux/quality_check/Nop10/nucleolus -d /home/alex/alex_files/markerproject_redux/screens/Nop10 -x /home/alex/alex_files/markerproject_redux/coordinates/Nop10/all_overlay_paths.csv
 ```
 
-```05-4-1_removing_low_quality_nucleolus_objects.py```
+**```05-4-1_removing_low_quality_nucleolus_objects.py```**
 
 This script deletes some or all children of specified Cell objects. It updates the number of children for every Cell accordingly and exports per-strain information (i.e., how many children were removed on average for every strain).
 
@@ -250,7 +252,7 @@ $ python 05-4-1_removing_low_quality_nucleolus_objects.py -d <database_path> -q 
 python /home/alex/alex_files/markerproject_redux/scripts/05-4-1_removing_low_quality_nucleolus_objects.py -d /home/alex/alex_files/markerproject_redux/screens/Nop10/Nop10_DMA_Plate01.db -q /home/alex/alex_files/markerproject_redux/quality_check/Nop10/nucleolus/filtered_nucleoli -c /home/alex/alex_files/markerproject_redux/quality_check/Nop10/nucleolus/raw_nucleolus_qc_features.csv -p DMA_Plate01 -x True
 ```
 
-```GEN_combine_files_from_all_plates.py```
+**```GEN_combine_files_from_all_plates.py```**
 
 Files with removed children and per-strain information are combined.
 
@@ -265,9 +267,219 @@ $ python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_fro
 ```
 
 
-### License
-This software is licensed under the [BSD 3-Clause License][BSD3]. Please see the 
-``LICENSE`` file for more details.
+### Part 5: Cell Cycle Classification
 
-[intracellular_organization_dynamics_test_images]: https://thecellvision.org/intracellular_organization_dynamics/Intracellular_Organization_Dynamics_Demo_Images.tar.gz
-[BSD3]: https://opensource.org/license/bsd-3-clause
+**```06-1_get_features_for_cell_cycle_classification.py```**
+
+Cell cycle classification is done using 18 features describing cell shape, nuclear shape/count, and nuclear position(s) relative to the cell's center. This script creates a single csv file with all Cell objects in the screen and raw values for these 18 features. Some features are directly taken from CellProfiler while others are hand-crafted.
+
+```
+$ python 06-1_get_features_for_cell_cycle_classification.py -d <database_directory> -c <cell_cycle_classification_directory> -x <overlay_path_csv>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/06-1_get_features_for_cell_cycle_classification.py -d /home/alex/alex_files/markerproject_redux/screens/Nop10 -c /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10 -x /home/alex/alex_files/markerproject_redux/coordinates/Nop10/all_overlay_paths.csv
+```
+
+**```06-2_make_cell_cycle_classification_model_on_training_data.py```**
+
+A random subset of objects from the csv file produced in the previous script is chosen and labelled as G1, S/G2, or MAT. A LightGBM classification model is trained on these labels and saved. Model metrics are saved as well.
+
+```
+$ python 06-2_make_cell_cycle_classification_model_on_training_data.py -l <labelled_cells_table> -f <cell_cycle_classification_feature_table> -c <cell_cycle_classification_directory> -x <overlay_path_csv>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/06-2_make_cell_cycle_classification_model_on_training_data.py -l /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/all_labelled_cells.csv -f /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/all_cell_and_nuclear_features_for_cell_cycle_classification.csv -c /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10 -x /home/alex/alex_files/markerproject_redux/coordinates/Nop10/all_overlay_paths.csv
+```
+
+**```06-3_do_cell_cycle_classification_on_all_cells.py```**
+
+This script does cell cycle classification on all cells and adds the predicted cell cycle label to the database. It exports predicted labels as a csv file as well.
+
+```
+$ python 06-3_do_cell_cycle_classification_on_all_cells.py -d <database_path> -p <plate_label> -c <output_directory> -f <cell_cycle_classification_feature_table> -m <model_path>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/06-3_do_cell_cycle_classification_on_all_cells.py -d /home/alex/alex_files/markerproject_redux/screens/Nop10/Nop10_DMA_Plate01.db -p DMA_Plate01 -c /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/all_classified_cells -f /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/all_cell_and_nuclear_features_for_cell_cycle_classification.csv -m /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/classification_model/cell_cycle_classification_lgbm_model.txt
+```
+
+**```GEN_combine_files_from_all_plates.py```**
+
+All cell cycle prediction csv files are combined.
+
+```
+$ python GEN_combine_files_from_all_plates.py -d <directory_path> -s <file_substring> -o <output_file_name>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_from_all_plates.py -d /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/all_classified_cells -s classified_cells -o all_classified_cells
+```
+
+**```06-4_get_random_cells_for_viewing.py```**
+
+To assess predictions, a certain number of random cells can be obtained and viewed using Single Cell Tool.
+
+```
+$ python 06-4_get_random_cells_for_viewing.py -c <classified_cells_csv> -o <output_directory> -x <overlay_path_csv>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/06-4_get_random_cells_for_viewing.py -c /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/all_classified_cells/all_classified_cells.csv -o /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/all_classified_cells/sct_inputs -x /home/alex/alex_files/markerproject_redux/coordinates/Nop10/all_overlay_paths.csv
+```
+
+
+### Part 6. Doing Quality Check on Cell Cycle
+
+**```07-0_get_sct_inputs_for_low_confidence_cell_cycle_classification.ipynb```**
+
+Cell cycle classification is soft; each label has three confidence scores attached and the label with the highest confidence score is chosen. This notebook generates inputs for Single Cell Tool for random G1, S/G2, and MAT cells with their highest cell cycle confidence score falling within different thresholds. The aim is to find a cut-off threshold for G1, S/G2, and MAT cells at the point where there are more misclassified cells than otherwise.
+
+
+**```07_getting_low_confidence_cell_cycle_classifications.py```**
+
+Once threshold cut-offs have been determined, this script identifies Cells falling below these thresholds (e.g., if the threshold cut-off for G1 is 0.85, then all G1 cells with a confidence score below 0.85 are selected for deletion.) Per-strain statistics are also saved.
+
+```
+$ python 07_getting_low_confidence_cell_cycle_classifications.py -c <classified_cells> -o <output_directory> -p <plate_label> -g <g1_min_score> -s <sg2_min_score> -m <mat_min_score>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/07_getting_low_confidence_cell_cycle_classifications.py -c /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/all_classified_cells/DMA_Plate01_classified_cells.csv -o /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/filtered_cells_with_low_confidence -p DMA_Plate01 -g 0.90 -s 0 -m 0.95
+```
+
+**```GEN_combine_files_from_all_plates.py```**
+
+All csv files with Cells to be deleted are combined.
+
+```
+$ python GEN_combine_files_from_all_plates.py -d <directory_path> -s <file_substring> -o <output_file_name>
+
+# removed cells
+$ python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_from_all_plates.py -d /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/filtered_cells_with_low_confidence -s cells_classified_with_low_confidence -o all_filtered_cells
+
+# per-strain information
+$ python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_from_all_plates.py -d /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/filtered_cells_with_low_confidence -s percentage_of_cells_dropped -o all_strain_stats_after_filtering
+```
+
+**```GEN_deleting_low_quality_objects.py```**
+
+This script modifies the databases and removes objects with matching Cell IDs that have a low cell cycle classification score. It also removes all of their children and updates the number of Cell/Nuclei/Subcellular Compartment masks in each image accordingly.
+
+```
+$ python GEN_deleting_low_quality_objects.py -d <database_path> -t <subcellular_comp_table_name> -c <num_subcellular_compartment_in_image> -f <cell_ids_to_remove>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/GEN_deleting_low_quality_objects.py -d /home/alex/alex_files/markerproject_redux/screens/Nop10/Nop10_DMA_Plate01.db -t Per_Nucleolus -c Image_Count_Nucleolus -f /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Nop10/filtered_cells_with_low_confidence/DMA_Plate01_cells_classified_with_low_confidence.csv
+```
+
+
+### Part 7: Whole-Cell Phenotyping
+
+**```08_whole_cell_phenotypes.py```**
+
+This script identifies cells that are abnormally large/small and abnormally apolar/elongated. For each phenotype, it generates files with identified output cells, per-strain cell counts, per-strain penetrances, and strain hits. This is a generalizable script applying to all compartments.
+
+```
+$ python 08_whole_cell_phenotypes.py -d <database_path> -o <output_directory> -p <plate_label>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/08_whole_cell_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Nop10/Nop10_DMA_Plate01.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells -p DMA_Plate01
+```
+
+**```GEN_phenotype_outputs_nop10_additional_processing.py```**
+
+This is a Nop10-only script that processes some of the generated outlier detection files, as Nop10 has some non-standard differences from other screens.
+
+```
+$ python GEN_phenotype_outputs_nop10_additional_processing.py -d <whole_cell_directory> -c <strain_cell_counts_table> -p <strain_penetrance_table>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/GEN_phenotype_outputs_nop10_additional_processing.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells -c /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells/abnormal_cell_size/abnormally_large_cells/cell_counts/TSA_26C_Plate01_Cell_strain_cell_counts.csv -p /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells/abnormal_cell_size/abnormally_large_cells/penetrances/TSA_26C_Plate01_Cell_strain_penetrances.csv
+```
+
+**```GEN_combine_files_from_all_plates_for_phenotypes_directory.py```**
+
+This script combines generated outlier detection files across all databases.
+
+```
+$ python GEN_combine_files_from_all_plates_for_phenotypes_directory.py -d <whole_cell_directory>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_from_all_plates_for_phenotypes_directory.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells
+```
+
+
+### Part 8: Subcellular Compartment Phenotyping**
+
+**```09-4_nucleolus_phenotypes.py```**
+This script is screen-specific and identifies outlier cells with signifcant defects in the subcellular compoartment of interest. It produces the some output files as whole-cell phenotyping.
+
+```
+$ python 09-4_nucleolus_phenotypes.py -d <database_directory> -o <output_directory> -p <plate_label>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/09-4_nucleolus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Nop10/Nop10_DMA_Plate01.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli -p DMA_Plate01
+```
+
+**```GEN_phenotype_outputs_nop10_additional_processing.py```**
+
+This is a Nop10-only script that processes some of the generated outlier detection files, as Nop10 has some non-standard differences from other screens.
+
+```
+$ python GEN_phenotype_outputs_nop10_additional_processing.py -d <subcellular_directory> -c <strain_cell_counts_table> -p <strain_penetrance_table>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/GEN_phenotype_outputs_nop10_additional_processing.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli -c /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli/abnormal_nucleolus_size/large_nucleolus/cell_counts/TSA_26C_Plate01_Nucleolus_strain_cell_counts.csv -p /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli/abnormal_nucleolus_size/large_nucleolus/penetrances/TSA_26C_Plate01_Nucleolus_strain_penetrances.csv
+```
+
+**```GEN_combine_files_from_all_plates_for_phenotypes_directory.py```**
+
+This script combines generated outlier detection files across all databases.
+
+```
+$ python GEN_combine_files_from_all_plates_for_phenotypes_directory.py -d <subcellular_directory>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_from_all_plates_for_phenotypes_directory.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli
+```
+
+
+### Part 9: Combining Whole-Cell and Subcellular Penetrances
+
+**```10_combine_cell_phenotype_overall_penetrances.py```**
+
+This script combines overall whole-cell and subcellular penetrances for every strain into one spreadsheet. It also calculates the combined whole-cell and subcellular penetrance.
+
+```
+$ python 10_combine_cell_phenotype_overall_penetrances.py -c <whole_cell_outliers> -s <subcellular_outliers> -o <phenotypes_directory> -d <database_directory>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/10_combine_cell_phenotype_overall_penetrances.py -c /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells/aggregated_cell_outlier_data/all_aggregated_cell_outlier_data.csv -s /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli/aggregated_cell_outlier_data/all_aggregated_cell_outlier_data.csv -o /home/alex/alex_files/markerproject_redux/phenotypes/Nop10 -d /home/alex/alex_files/markerproject_redux/screens/Nop10
+```
+
+
+### Part 10: Obtaining Final Strain Hits (Whole-Cell)
+
+**```11-1_get_replicate_distances_nop10.py```**
+
+This script calculates a replicate distance based on penetrance for every strain between R1-R2, R1-R3, and R2-R3. Distance variances and medians are then plotted based on replicate cell count to identify a suitable minimum cell count cut-off. Larger distances indicate greater difference between two replicate penetrances for a strain.
+
+```
+$ python 11-1_get_replicate_distances_nop10.py -d <database_directory> -c <whole_cell_outliers> -s <screen_marker> -o <output_directory>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/11-1_get_replicate_distances_nop10.py -d /home/alex/alex_files/markerproject_redux/screens/Nop10 -c /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells/aggregated_cell_outlier_data -s Nop10 -o /home/alex/alex_files/markerproject_redux/strain_filtering/Cells
+```
+
+**```11-2_final_strain_filtering_nop10.py```**
+
+Here strains undergo a final filtering pipeline where dubious ORFs, strains with too few cells, strains with low penetrance, etc. are removed. This yields a dataset of high-confidence strains (Sheet E), but pre-filtered strain lists are also saved.
+
+```
+$ python 11-2_final_strain_filtering_nop10.py -d <whole_cell_directory> -c <replicate_distances_table> -p <per_strain_penetrances> -m <minimum_cell_count> -s <screen_marker> -O <outlier_cells> -o <output_directory>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/11-2_final_strain_filtering_nop10.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells -c /home/alex/alex_files/markerproject_redux/strain_filtering/Cells/per_replicate_penentrances_and_distances/Nop10_per_replicate_penetrances_and_distances.csv -p /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells/aggregated_penetrance_data/all_aggregated_penetrance_data.csv -m 51 -s Nop10 -O /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Cells/aggregated_cell_outlier_data/all_aggregated_cell_outlier_data.csv -o /home/alex/alex_files/markerproject_redux/strain_filtering/Cells/filtered_strain_workbooks
+```
+
+**Obtaining Final Strain Hits (Subcellular Compartment)**
+
+**```11-1_get_replicate_distances_nop10.py```**
+
+This script calculates a replicate distance based on penetrance for every strain between R1-R2, R1-R3, and R2-R3. Distance variances and medians are then plotted based on replicate cell count to identify a suitable minimum cell count cut-off. Larger distances indicate greater difference between two replicate penetrances for a strain.
+
+```
+$ python 11-1_get_replicate_distances_nop10.py -d <database_directory> -c <subcellular_outliers> -s <screen_marker> -o <output_directory>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/11-1_get_replicate_distances_nop10.py -d /home/alex/alex_files/markerproject_redux/screens/Nop10 -c /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli/aggregated_cell_outlier_data -s Nop10 -o /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments
+```
+
+**```11-2_final_strain_filtering_nop10.py```**
+
+Here strains undergo a final filtering pipeline where dubious ORFs, strains with too few cells, strains with low penetrance, etc. are removed. This yields a dataset of high-confidence strains (Sheet E), but pre-filtered strain lists are also saved.
+
+```
+$ python 11-2_final_strain_filtering_nop10.py -d <subcellular_directory> -c <replicate_distances_table> -p <per_strain_penetrances> -m <minimum_cell_count> -s <screen_marker> -O <outlier_cells> -o <output_directory>
+
+$ python /home/alex/alex_files/markerproject_redux/scripts/11-2_final_strain_filtering_nop10.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli -c /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments/per_replicate_penentrances_and_distances/Nop10_per_replicate_penetrances_and_distances.csv -p /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli/aggregated_penetrance_data/all_aggregated_penetrance_data.csv -m 51 -s Nop10 -O /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli/aggregated_cell_outlier_data/all_aggregated_cell_outlier_data.csv -o /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments/filtered_strain_workbooks
+```
