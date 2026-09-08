@@ -59,7 +59,7 @@ def feature_distributions_matrix(qc_features, qc_directory, output_figure_name):
 
 def delete_problematic_compartment_masks(db_path, filtered_comps, comp_name, output_dir, plate, delete_all_comp_masks="False", replace_comp_num_with=-1, save_csv="True"):
     """
-    Deletes problematic compartment masks specifid in filtered_comps. If indicated, deletes all other masks
+    Deletes problematic compartment masks specified in filtered_comps. If indicated, deletes all other masks
     for that cell as well. Updates number of children for that cell with the new value or <replace_comp_num_with>
     if all compartments deleted.
 
