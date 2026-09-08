@@ -370,7 +370,7 @@ python /home/alex/alex_files/markerproject_redux/scripts/06-3_do_cell_cycle_clas
 
 # Part 06.4 - combine cell cycle classification files and get a certain number of random cells from each class to view in singlecelltool (adjust code if needed)
 python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_from_all_plates.py -d /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Psr1/all_classified_cells -s classified_cells -o all_classified_cells
-python /home/alex/alex_files/markerproject_redux/scripts/06-4_get_random_cells_for_viewing.py -d /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Psr1/all_classified_cells -c /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Psr1/all_classified_cells/all_classified_cells.csv -o /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Psr1/all_classified_cells/sct_inputs -x /home/alex/alex_files/markerproject_redux/coordinates/Psr1/all_overlay_paths.csv
+python /home/alex/alex_files/markerproject_redux/scripts/06-4_get_random_cells_for_viewing.py -c /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Psr1/all_classified_cells/all_classified_cells.csv -o /home/alex/alex_files/markerproject_redux/cell_cycle_classification/Psr1/all_classified_cells/sct_inputs -x /home/alex/alex_files/markerproject_redux/coordinates/Psr1/all_overlay_paths.csv
 
 
 # Part 07.1 - get cells that have low confidence in cell cycle classification for each plate
