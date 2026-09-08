@@ -17,7 +17,7 @@ $ conda env create -f environment.yml
 ### Overview
 This repository is a collection of scripts and notebooks used to analyze each Marker Project screen in a step-wise manner. Scripts that don't have a screen name (e.g., ```01_add_cell-IDs_and_strain_information.py```) are general scripts that apply to all screens. Those with a screen name (e.g., ```01-1_additional_tgl3_processing.py```) are screen-specific and address particular exceptions specfic to that screen.
 
-Raw images were processed and undergone feature extraction using CellPose and CellProfiler. Extracted features are stored in a series of databases for every screen. Every screen has 20-22 plates × 3 replicates and these scripts assume that every database contains objects for each plate across its three replicates (e.g., ```Nop10_DMA_Plate01.db``` contains all Nop10 objects from R1_Plate01, R2_Plate01, and R3_Plate01).
+Raw images were processed and undergone feature extraction using CellPose and CellProfiler. Extracted features are stored in a series of databases for every screen. Every screen has 20-22 plates × 3 replicates and these scripts assume that every database contains objects for each plate across its three replicates (e.g., ```Nop10_DMA_Plate01.db``` contains all Nop10 objects from R1_Plate01, R2_Plate01, and R3_Plate01). CellProfiler pipelines can be found in the ```pipelines_and_input_files``` directory.
 
 Screens should be run in order as indicated by each script name. Some generalist scripts, such as those deleting a list of specified objects, are run multiple times in the pipeline. For example, the order of scripts run for the Nucleolus screen would be:
 
@@ -395,7 +395,7 @@ $ python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_fro
 ```
 
 
-### Part 8: Subcellular Compartment Phenotyping**
+### Part 8: Subcellular Compartment Phenotyping
 
 **```09-4_nucleolus_phenotypes.py```**
 This script is screen-specific and identifies outlier cells with signifcant defects in the subcellular compoartment of interest. It produces the some output files as whole-cell phenotyping.
@@ -483,3 +483,25 @@ $ python 11-2_final_strain_filtering_nop10.py -d <subcellular_directory> -c <rep
 
 $ python /home/alex/alex_files/markerproject_redux/scripts/11-2_final_strain_filtering_nop10.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli -c /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments/per_replicate_penentrances_and_distances/Nop10_per_replicate_penetrances_and_distances.csv -p /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli/aggregated_penetrance_data/all_aggregated_penetrance_data.csv -m 51 -s Nop10 -O /home/alex/alex_files/markerproject_redux/phenotypes/Nop10/Nucleoli/aggregated_cell_outlier_data/all_aggregated_cell_outlier_data.csv -o /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments/filtered_strain_workbooks
 ```
+
+
+---
+
+### Other Scripts and Directories
+
+**```12_make_plots_with_phenotype_data.ipynb```**
+
+This notebook is where all plots are created using finalized strain lists.
+
+**```GEN_generate_files_for_checking_phenotypes.ipynb```**
+
+Given a file with outlier cells, strain ID, and cell cycle stage, this script creates a Single Cell Tool output file for viewing outlier cells. This is helpful for checking specific outlier phenotypes for any screen.
+
+**```GEN_quality_check_functions.py```** and **```GEN_outlier_detection_functions.py```**
+
+These are a collection of functions used in quality check and outlier detection.
+
+```additional_files```
+
+This directory has array mapping files and QC filters used for every screen.
+
