@@ -232,7 +232,7 @@ $ python /home/alex/alex_files/markerproject_redux/scripts/GEN_deleting_low_qual
 
 **```05-4_generate_nucleolus_quality_check_histograms.py```**
 
-Segmentation masks for some subcellular compartments can poor or misleading. This script creates histograms or exports csv files of object Cell IDs whose children should be removed (either some children can be removed or all can be removed).
+Segmentation masks for some subcellular compartments can be poor or misleading. This script creates histograms or exports csv files of object Cell IDs whose children should be removed (either some children can be removed or all can be removed).
 
 **NOTE:** depending on screen size, this may be extremely memory-intensive. Running on a cluster for very large screens is recommended.
 
@@ -398,7 +398,7 @@ $ python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_fro
 ### Part 8: Subcellular Compartment Phenotyping
 
 **```09-4_nucleolus_phenotypes.py```**
-This script is screen-specific and identifies outlier cells with signifcant defects in the subcellular compoartment of interest. It produces the some output files as whole-cell phenotyping.
+This script is screen-specific and identifies outlier cells with signifcant defects in the subcellular compartment of interest. It produces the same output files as whole-cell phenotyping.
 
 ```
 $ python 09-4_nucleolus_phenotypes.py -d <database_directory> -o <output_directory> -p <plate_label>
