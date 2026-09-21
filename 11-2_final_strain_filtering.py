@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--phenotype_directory', default='', help='Path to directory with all phenotype information.')
 parser.add_argument('-c', '--cell_counts', default='', help='Path to spreadsheet with R1, R2, and R3 cell counts for every strain in a screen.')
 parser.add_argument('-p', '--penetrances', default='', help='Path to spreadsheet with overall and per-CC penetraces for every phenotype for every strain in a screen.')
+parser.add_argument('-P', '--positive_controls', default='', help='Path to spreadsheet with positive controls for screen.')
 parser.add_argument('-m', '--min_num_cells', default=51, help='Specify minimum cell count for filtering; defaults to 51.')
 parser.add_argument('-s', '--screen', default='', help='Name of screen for filtering strain files.')
 parser.add_argument('-o', '--output_directory', default='', help='Where to save spreadsheets with replicate-replicate distances.')
@@ -17,7 +18,9 @@ args = parser.parse_args()
 # Sheet A: everything
 # Sheet B: no WT, no ORFs near marker/HTA2/CAN1/LYP1, no dubious ORFs, no strains with info from only one rep
 # Sheet C: above + no cases with < 51 total cell count + no cases with < 20 cells in any of their reps + no cases with too much variation in rep-rep pens
-# Sheet D: above + no nonsig strains + min. penetrance is greater than 95th perc. of wt strains
+# Sheet D: above + min. penetrance is greater than 95th perc. of wt strains
+# Sheet E: above + no strains not sig in any one defect
+# Sheet F: above + no strains whose overall penetrance is below the median positive control penetrance
 
 
 def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_path):
@@ -181,6 +184,17 @@ if __name__ == '__main__':
             (pl.col("Strain_ID").is_in(sig_strains)),
         )
     )
+    
+    # Sheet F: above + no strains whose overall penetrance is below the median positive control penetrance
+    if args.positive_controls:
+        pos_ctrls = pl.read_csv(args.positive_controls)
+        pos_ctrl_pens = sheetE.filter(pl.col("ORF").is_in(pos_ctrls["ORF"])).select("Overall_Penetrance")
+        sheetF = (
+            sheetE
+            .filter(
+                (pl.col("Overall_Penetrance") > pos_ctrl_pens["Overall_Penetrance"].median())
+            )
+        )
 
     # Export
     dropped_cols = ["Num_Null_Dists",
@@ -193,6 +207,8 @@ if __name__ == '__main__':
     sheetC = sheetC.drop(dropped_cols)
     sheetD = sheetD.drop(dropped_cols)
     sheetE = sheetE.drop(dropped_cols)
+    if args.positive_controls:
+        sheetF = sheetF.drop(dropped_cols)
 
     with pd.ExcelWriter(f"{args.output_directory}/{args.screen}_filtered_strains.xlsx", engine="openpyxl") as writer:
         sheetA.to_pandas().to_excel(writer, sheet_name="SheetA", index=False)
@@ -200,5 +216,7 @@ if __name__ == '__main__':
         sheetC.to_pandas().to_excel(writer, sheet_name="SheetC", index=False)
         sheetD.to_pandas().to_excel(writer, sheet_name="SheetD", index=False)
         sheetE.to_pandas().to_excel(writer, sheet_name="SheetE", index=False)
+        if args.positive_controls:
+            sheetF.to_pandas().to_excel(writer, sheet_name="SheetF", index=False)
 
     print("Complete.")
