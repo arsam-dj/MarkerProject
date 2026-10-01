@@ -8,7 +8,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--phenotype_directory', default='', help='Path to directory with all phenotype information.')
 parser.add_argument('-c', '--cell_counts', default='', help='Path to spreadsheet with R1, R2, and R3 cell counts for every strain in a screen.')
 parser.add_argument('-p', '--penetrances', default='', help='Path to spreadsheet with overall and per-CC penetraces for every phenotype for every strain in a screen.')
-parser.add_argument('-P', '--positive_controls', default='', help='Path to spreadsheet with positive controls for screen.')
 parser.add_argument('-m', '--min_num_cells', default=51, help='Specify minimum cell count for filtering; defaults to 51.')
 parser.add_argument('-s', '--screen', default='', help='Name of screen for filtering strain files.')
 parser.add_argument('-o', '--output_directory', default='', help='Where to save spreadsheets with replicate-replicate distances.')
@@ -19,9 +18,7 @@ args = parser.parse_args()
 # Sheet B: no WT, no ORFs near marker/HTA2/CAN1/LYP1, no dubious ORFs, no strains with info from only one rep
 # Sheet C: above + no cases with < 51 total cell count + no cases with < 20 cells in any of their reps + no cases with too much variation in rep-rep pens
 # Sheet D: above + min. penetrance is greater than 95th perc. of wt strains
-# Sheet E: above + no strains not sig in any one defect
-# Sheet F: above + no strains whose overall penetrance is below the median positive control penetrance
-
+# Sheet E: above + no strains not sig in any one defect + no strains with low phenotype-specific penetrances
 
 def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_path):
     """
@@ -73,11 +70,51 @@ def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_pat
     return merged_df
 
 
-def get_all_strain_hits(phenotype_dir):
+def get_all_strain_hits(phenotype_dir, sheetA):
+    """
+    Loads each phenotype's per-CC hit list, then for each hit it determines its overall phenotype penetrance using SheetA.
+    If the overall phenotype penetrance is too low (<10%), then that hit is no longer considered a hit and thus removed.
+    This removes strains that for example have >20% penetrance in MAT, but only 4% overall penetrance.
+    """
     paths = Path(phenotype_dir).rglob("all_hit_strains.csv")
-    good_paths = [pl.read_csv(p) for p in paths if pl.read_csv(p).shape[0] > 0] # only keep dataframes that have at least one row
+    sheetA = (
+        sheetA
+        .with_columns(
+            (
+                pl
+                .when(pl.col("Name").is_null())
+                .then(pl.lit(""))
+                .otherwise(pl.col("Name"))
+            ).alias("Name")
+        )
+    )
+    paths_to_columns = pl.read_csv("/home/alex/alex_files/markerproject_redux/misc_files/sig_strain_paths_mapped_to_penetrance_columns.csv")
 
-    sig_strains = (
+    for path in paths:
+        phenotype_pens = paths_to_columns.filter(pl.col("Path") == str(path))["Phenotype_Penetrance"][0]
+        sheetA_phenotype_pens = sheetA.select(["ORF", "Name", "Strain_ID", phenotype_pens])
+        sig_strains = (
+            pl
+            .read_csv(path)
+            .with_columns(
+                (
+                    pl
+                    .when(pl.col("Name").is_null())
+                    .then(pl.lit(""))
+                    .otherwise(pl.col("Name"))
+                ).alias("Name")
+            )
+            .select(["ORF", "Name", "Strain_ID"])
+            .unique()
+            .join(sheetA_phenotype_pens, on=["ORF", "Name", "Strain_ID"], how="left")
+            .filter(pl.col(phenotype_pens) >= 0.1)
+            .rename({phenotype_pens: "Penetrance"})
+        )
+        sig_strains.write_csv(f"{str.split(str(path), '/all_hit_strains.csv')[0]}/all_hit_strains_filtered.csv")
+
+    paths_filtered = Path(phenotype_dir).rglob("all_hit_strains_filtered.csv")
+    good_paths = [pl.read_csv(p) for p in paths_filtered if pl.read_csv(p).shape[0] > 0] # only keep dataframes that have at least one row
+    all_sig_strains = (
         pl
         .concat(
             good_paths, how="vertical"
@@ -87,7 +124,7 @@ def get_all_strain_hits(phenotype_dir):
         .unique()
     )
 
-    return list(sig_strains["Strain_ID"])
+    return list(all_sig_strains["Strain_ID"])
 
 
 if __name__ == '__main__':
@@ -172,29 +209,29 @@ if __name__ == '__main__':
     sheetD = (
         sheetC
         .filter(
-            (pl.col("Overall_Penetrance") >= wt_strains["Overall_Penetrance"].quantile(0.05))
+            (pl.col("Overall_Penetrance") >= wt_strains["Overall_Penetrance"].quantile(0.95))
         )
     )
 
-    # SheetE: above + no strains not sig in any one defect
-    sig_strains = get_all_strain_hits(args.phenotype_directory)
+    # Sheet E: above + no strains not sig in any one defect + no strains with low phenotype-specific penetrances
+    sig_strains = get_all_strain_hits(args.phenotype_directory, sheetA)
+    phenotype_pen_cols = [
+        column for column in sheetD.columns if
+        ("Overall" in column) and
+        (("G1" not in column) and ("SG2" not in column) and ("MAT" not in column) and ("Overall_Penetrance" not in column))
+    ]
+
     sheetE = (
         sheetD
         .filter(
-            (pl.col("Strain_ID").is_in(sig_strains)),
+            (pl.col("Strain_ID").is_in(sig_strains))
         )
-    )
-    
-    # Sheet F: above + no strains whose overall penetrance is below the median positive control penetrance
-    if args.positive_controls:
-        pos_ctrls = pl.read_csv(args.positive_controls)
-        pos_ctrl_pens = sheetE.filter(pl.col("ORF").is_in(pos_ctrls["ORF"])).select("Overall_Penetrance")
-        sheetF = (
-            sheetE
-            .filter(
-                (pl.col("Overall_Penetrance") > pos_ctrl_pens["Overall_Penetrance"].median())
+        .filter(
+            pl.any_horizontal(
+                pl.col(phenotype_pen_cols) >= 0.1
             )
         )
+    )
 
     # Export
     dropped_cols = ["Num_Null_Dists",
@@ -207,8 +244,6 @@ if __name__ == '__main__':
     sheetC = sheetC.drop(dropped_cols)
     sheetD = sheetD.drop(dropped_cols)
     sheetE = sheetE.drop(dropped_cols)
-    if args.positive_controls:
-        sheetF = sheetF.drop(dropped_cols)
 
     with pd.ExcelWriter(f"{args.output_directory}/{args.screen}_filtered_strains.xlsx", engine="openpyxl") as writer:
         sheetA.to_pandas().to_excel(writer, sheet_name="SheetA", index=False)
@@ -216,7 +251,5 @@ if __name__ == '__main__':
         sheetC.to_pandas().to_excel(writer, sheet_name="SheetC", index=False)
         sheetD.to_pandas().to_excel(writer, sheet_name="SheetD", index=False)
         sheetE.to_pandas().to_excel(writer, sheet_name="SheetE", index=False)
-        if args.positive_controls:
-            sheetF.to_pandas().to_excel(writer, sheet_name="SheetF", index=False)
 
     print("Complete.")
