@@ -41,8 +41,7 @@ def create_qc_raw_df(database_directory, coordinates_path, qc_directory):
     for db_path in databases:
         conn = sqlite3.connect(db_path)
 
-        plate_qc_df = pl.read_database(
-            query=f"""
+        query = f"""
                     SELECT 
                         Per_APs.Cell_ID, 
                         Per_APs.APs_AreaShape_Center_X AS Center_X,
@@ -53,7 +52,10 @@ def create_qc_raw_df(database_directory, coordinates_path, qc_directory):
                     FROM Per_APs
                     JOIN (SELECT Cell_ID, Cell_AreaShape_Area FROM Per_Cell) pc
                         ON Per_APs.Cell_ID = pc.Cell_ID;
-                    """,
+                    """
+
+        plate_qc_df = pl.read_database(
+            query=query,
             connection=conn)
         qc_dfs.append(plate_qc_df)
 
@@ -87,16 +89,14 @@ if __name__ == '__main__':
 
     features_to_plot = (
         qc_df_raw
-        .rename({
-            "APs_AreaShape_Perimeter": "APs_AreaShape_Perimeter",
-            "APs_AreaShape_Area": "APs_AreaShape_Area"
-        })
         .drop(["Cell_ID", "Image_Path", "Center_X", "Center_Y", "APs_Number_Object_Number"])
     )
-
-    feature_distributions_matrix(
-        qc_features=features_to_plot,
-        qc_directory=args.qc_directory,
-        output_figure_name='APs_qc_feature_distributions')
+    features = features_to_plot.columns
+    for feature in features:
+        feature_vals = features_to_plot.select(feature)
+        feature_distributions_matrix(
+            qc_features=feature_vals,
+            qc_directory=args.qc_directory,
+            output_figure_name=f'APs_qc_{feature}_distributions')
 
     print("Complete.")
