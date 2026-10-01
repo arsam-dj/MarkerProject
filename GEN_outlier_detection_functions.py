@@ -3,15 +3,27 @@ import polars as pl
 from scipy import stats
 import sqlite3
 from functools import reduce
+import matplotlib.pyplot as plt
 from statistics import stdev, mean
+from scipy.stats import false_discovery_control
+import seaborn as sns
 
 
 def scale_compartment_feature(db_path, table_name, feature_name, output_dir, plate, compartment_name,
                               cell_cycle_stages=["G1", "SG2", "MAT"], feature_table=""):
     """
-    First identifies cells that have an abnormal number of compartment masks, then scales the compartment sizes according to
-    wildtype for each cell cycle stage while ignoring these cells from the calculation. Exports the results to be used in a
-    separate function for identifying outliers.
+    Given a feature, calculates the modified z-score for every cell according to wildtypes on the same plate and with 
+    the same cell cycle stage. The modified z-score is robust against non-normal distributions. The formula is:
+    
+    mz = (0.6745 * (xi - x~)) / median(|xi - x~|) where:
+        xi: observation
+        x~: median
+    
+    Empirical p-values are then calculated based on the direction of the modified z-score. If mz > 0, then:
+    p = (1 + (#wt >= x)) / (N(wt) + 1)      where N(wt) is total number of wildtype cells
+    
+    Or if mz < 0:
+    p = (1 + (#wt <= x)) / (N(wt) + 1)
 
     Args:
         db_path (str): path to database with cell/compartment information
@@ -26,6 +38,9 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    if not os.path.exists(f"{output_dir}/distribution_histograms"):
+        os.makedirs(f"{output_dir}/distribution_histograms")
 
     # Read data
     if isinstance(feature_table, pl.DataFrame):
@@ -68,6 +83,7 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
         .unique()
     )
 
+    # Calculate modified z-scores
     for condition in conditions:
         for replicate in replicates:
             for cc_stage in cell_cycle_stages:
@@ -77,7 +93,7 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
                         (pl.col("Condition") == condition) &
                         (pl.col("Replicate") == replicate) &
                         (pl.col("Predicted_Label") == cc_stage) &
-                        (pl.col("ORF").is_in(['YOR202W', 'YMR271C']))
+                        (pl.col("ORF").is_in(["YOR202W", "YMR271C"]))
                     )
                 )
 
@@ -85,9 +101,8 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
                     print(
                         f"Skipping {plate} - {condition}C - {replicate} - {cc_stage} due to insufficient number of wildtype controls.")
                     continue
-                wt_mean_distance = mean(wt_cc_comps[feature_name])
-                wt_stdev_distance = stdev(wt_cc_comps[feature_name])
-
+                wt_median = wt_cc_comps[feature_name].median()
+                wt_mad = abs(wt_cc_comps[feature_name] - wt_median).median()
                 all_cells = (
                     all_cells
                     # For cells in the correct cc_stage, update the *_Scaled column by scaling
@@ -101,34 +116,153 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
                                 (pl.col("Replicate") == replicate) &
                                 (pl.col("Predicted_Label") == cc_stage)
                             )
-                            .then(((pl.col(f"{feature_name}")) - wt_mean_distance) / wt_stdev_distance)
+                            .then((0.6745 * (pl.col(feature_name) - wt_median)) / wt_mad)
                             .otherwise(pl.col(f"{feature_name}_Scaled"))
                         ).alias(f"{feature_name}_Scaled")
                     )
                 )
 
-    # Convert scaled values to one-sided p-values (depends on orientation of scaled value -- negative values get
-    # left-sided p-values while positive values get right-sided p-values)
-    all_cells = (
-        all_cells
-        .with_columns(
-            pl
-            .when(pl.col(f"{feature_name}_Scaled") < 0)
-            .then(pl.col(f"{feature_name}_Scaled").map_elements(lambda z: stats.norm.cdf(z), return_dtype=pl.Float64))
-            .otherwise(
-                pl.col(f"{feature_name}_Scaled").map_elements(lambda z: stats.norm.sf(z), return_dtype=pl.Float64))
-            .alias("pval")
-        ))
+    # Calculate empirical p-values
+    pval_dfs = []
+    for condition in conditions:
+        for replicate in replicates:
+            for cc_stage in cell_cycle_stages:
+                mask = (
+                        (pl.col("Condition") == condition) &
+                        (pl.col("Replicate") == replicate) &
+                        (pl.col("Predicted_Label") == cc_stage)
+                )
 
-    # Export
-    (
-        all_cells
-        .select([
-            "Replicate", "Condition", "Row", "Column", "Cell_ID", "ORF", "Name", "Strain_ID", "Predicted_Label",
-            feature_name, f"{feature_name}_Scaled",
-            "pval"])
-        .write_csv(f"{output_dir}/{plate}_{compartment_name}_scaled_pval.csv")
-    )
+                wt_cells_subset = (
+                    all_cells
+                    .filter(
+                        mask &
+                        (pl.col("ORF").is_in(["YOR202W", "YMR271C"]))
+                    )
+                )
+
+                all_cells_subset_left = (
+                    all_cells
+                    .filter(
+                        mask &
+                        (pl.col(f"{feature_name}_Scaled") < 0)
+                    )
+                    .with_columns(
+                        (
+                            pl.col(feature_name).map_elements(
+                                lambda x: (
+                                                  1 + (wt_cells_subset[feature_name] <= x).sum()
+                                          ) / (wt_cells_subset.height + 1),
+                                return_dtype=pl.Float64)
+                        ).alias("pval")
+                    )
+                )
+
+                all_cells_subset_right = (
+                    all_cells
+                    .filter(
+                        mask &
+                        (pl.col(f"{feature_name}_Scaled") > 0)
+                    )
+                    .with_columns(
+                        (
+                            pl.col(feature_name).map_elements(
+                                lambda x: (
+                                                  1 + (wt_cells_subset[feature_name] >= x).sum()
+                                          ) / (wt_cells_subset.height + 1),
+                                return_dtype=pl.Float64)
+                        ).alias("pval")
+                    )
+                )
+
+                all_cells_subset_zero = (
+                    all_cells
+                    .filter(
+                        mask &
+                        (pl.col(f"{feature_name}_Scaled") == 0)
+                    )
+                    .with_columns(
+                        pl.lit(0.5).alias("pval")
+                    )
+                )
+
+                all_cells_subset_pval = pl.concat(
+                    [all_cells_subset_right, all_cells_subset_left, all_cells_subset_zero], how="vertical")
+                pval_dfs.append(all_cells_subset_pval)
+
+    all_cells = pl.concat(pval_dfs, how="vertical")
+
+    # Export tabular data and plot distributions
+    for condition in conditions:
+        if ("Dad2" in output_dir) and (condition in ["26", "37"]):
+            output_name = f"{output_dir}/TSA_{condition}C_{str.split(plate, "_")[1]}_{compartment_name}_scaled_pval.csv"
+        else:
+            output_name = f"{output_dir}/{plate}_{compartment_name}_scaled_pval.csv"
+        (
+            all_cells
+            .select([
+                "Replicate", "Condition", "Row", "Column", "Cell_ID", "ORF", "Name", "Strain_ID", "Predicted_Label",
+                feature_name, f"{feature_name}_Scaled",
+                "pval"])
+            .filter(pl.col("Condition") == condition)
+            .write_csv(output_name)
+        )
+        
+        for replicate in replicates:
+            for cc_stage in cell_cycle_stages:
+
+                wt_cells = (
+                    all_cells
+                    .filter(
+                        (pl.col("Condition") == condition) &
+                        (pl.col("Replicate") == replicate) &
+                        (pl.col("Predicted_Label") == cc_stage) &
+                        (pl.col("ORF").is_in(["YOR202W", "YMR271C"]))
+                    )
+                )
+
+                mutant_cells = (
+                    all_cells
+                    .filter(
+                        (pl.col("Condition") == condition) &
+                        (pl.col("Replicate") == replicate) &
+                        (pl.col("Predicted_Label") == cc_stage) &
+                        (~pl.col("ORF").is_in(["YOR202W", "YMR271C"]))
+                    )
+                )
+
+                plt.hist(mutant_cells[feature_name], bins=100, color="#bb565c", edgecolor="black", label="mutant cells")
+                plt.hist(wt_cells[feature_name], bins=100, color="#446e88", edgecolor="black", label="wildtype cells")
+                plt.title(f"Raw {feature_name} Distribution ({replicate} | {condition}C | {cc_stage})")
+                plt.xlabel("Value")
+                plt.ylabel("Frequency")
+                plt.legend(loc="upper left")
+                plt.savefig(
+                    f"{output_dir}/distribution_histograms/{plate}_{feature_name}_{replicate}_{condition}_{cc_stage}_raw.png")
+                plt.close()
+
+                plt.hist(mutant_cells[f"{feature_name}_Scaled"], bins=100, color="#bb565c", edgecolor="black", label="mutant cells")
+                plt.hist(wt_cells[f"{feature_name}_Scaled"], bins=100, color="#446e88", edgecolor="black", label="wildtype cells")
+                plt.title(f"Scaled {feature_name} Distribution ({replicate} | {condition}C | {cc_stage})")
+                plt.xlabel("Value")
+                plt.ylabel("Frequency")
+                plt.legend(loc="upper left")
+                plt.savefig(
+                    f"{output_dir}/distribution_histograms/{plate}_{feature_name}_{replicate}_{condition}_{cc_stage}_scaled.png")
+                plt.close()
+
+                plt.hist(mutant_cells.filter(pl.col("pval") <= 0.05)["pval"], bins=100, color="#bb565c", edgecolor="black",
+                         label="mutant cells")
+                plt.hist(wt_cells.filter(pl.col("pval") <= 0.05)["pval"], bins=100, color="#446e88", edgecolor="black",
+                         label="wildtype cells")
+                plt.title(f"Empirical P-Value Distribution ({replicate} | {condition}C | {cc_stage})")
+                plt.xlabel("Value")
+                plt.ylabel("Frequency")
+                plt.legend(loc="upper left")
+                plt.savefig(
+                    f"{output_dir}/distribution_histograms/{plate}_{feature_name}_{replicate}_{condition}_{cc_stage}_pvals.png")
+                plt.close()
+
 
     return all_cells
 
@@ -173,7 +307,15 @@ def identify_outlier_cells(feature_pvals, scaled_col_name, output_dir, plate, co
         )
 
     # Export all outlier cells
+    # First, save the combined file (important for Dad2)
     outlier_cells.write_csv(f"{output_dir}/{plate}_{compartment_name}_outlier_cells.csv")
+    
+    # Now if the screen is Dad2 and the plate is TSA, split the dataframe by condition and save 26C/37C separately
+    if ("Dad2" in output_dir) and ("TSA" in plate):
+        conditions = outlier_cells["Condition"].unique()
+        for condition in conditions:
+            output_file_name = f"{output_dir}/TSA_{condition}C_{str.split(plate, "_")[1]}_{compartment_name}_outlier_cells.csv"
+            outlier_cells.filter(pl.col("Condition") == condition).write_csv(output_file_name)
 
     return outlier_cells
 
@@ -210,7 +352,7 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
     strains = set(all_cells["Strain_ID"].to_list())
 
     # Initialize the per-strain penetrance dataframe
-    penetrance_dict = {"ORF": [], "Name": [], "Strain_ID": [], "Overall_Penetrance": []}
+    penetrance_dict = {"ORF": [], "Name": [], "Condition": [], "Strain_ID": [], "Overall_Penetrance": []}
     for replicate in replicates:
         penetrance_dict[f"Overall_{replicate}_Penetrance"] = []
     for cc_stage in cell_cycle_stages:
@@ -224,6 +366,10 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
         penetrance_dict["ORF"].append(all_cells.filter(pl.col("Strain_ID") == strain)["ORF"].item(0))
         penetrance_dict["Name"].append(all_cells.filter(pl.col("Strain_ID") == strain)["Name"].item(0))
         penetrance_dict["Strain_ID"].append(strain)
+        if ("26C" in strain) or ("37C" in strain):
+            penetrance_dict["Condition"].append(strain.split("-")[1].split("C")[0])
+        else:
+            penetrance_dict["Condition"].append("30")
 
         # Get cell counts for calculating overall penetrance
         all_strain_outlier_cells = (
@@ -347,11 +493,18 @@ def calculate_strain_penetrances(all_cells, all_outlier_cells, output_dir, plate
 
     # Export penetrance dataframe
     penetrance_table = pl.DataFrame(penetrance_dict)
-    (
-        penetrance_table
-        .sort(["Overall_Penetrance"], descending=True)
-        .write_csv(f"{output_dir}/{plate}_{compartment_name}_strain_penetrances.csv")
-    )
+    conditions = penetrance_table["Condition"].unique()
+    for condition in conditions:
+        if ("Dad2" in output_dir) and ("TSA" in plate):
+            output_file_name = f"{output_dir}/TSA_{condition}C_{str.split(plate, "_")[1]}_{compartment_name}_strain_penetrances.csv"
+        else:
+            output_file_name = f"{output_dir}/{plate}_{compartment_name}_strain_penetrances.csv"
+        (
+            penetrance_table
+            .filter(pl.col("Condition") == condition)
+            .sort(["Overall_Penetrance"], descending=True)
+            .write_csv(output_file_name)
+        )
 
     return penetrance_table
 
@@ -388,7 +541,7 @@ def tabulate_strain_cell_counts(all_cells, all_outlier_cells, output_dir, plate,
     strains = set(all_cells["Strain_ID"].to_list())
 
     # Initialize the per-strain penetrance dataframe
-    cell_count_dict = {"ORF": [], "Name": [], "Strain_ID": [], "Total_Cells": [], "Total_Outlier_Cells": []}
+    cell_count_dict = {"ORF": [], "Name": [], "Condition": [], "Strain_ID": [], "Total_Cells": [], "Total_Outlier_Cells": []}
     for replicate in replicates:
         cell_count_dict[f"Total_{replicate}_Cells"] = []
         cell_count_dict[f"Total_{replicate}_Outlier_Cells"] = []
@@ -405,6 +558,10 @@ def tabulate_strain_cell_counts(all_cells, all_outlier_cells, output_dir, plate,
         cell_count_dict["ORF"].append(all_cells.filter(pl.col("Strain_ID") == strain)["ORF"].item(0))
         cell_count_dict["Name"].append(all_cells.filter(pl.col("Strain_ID") == strain)["Name"].item(0))
         cell_count_dict["Strain_ID"].append(strain)
+        if ("26C" in strain) or ("37C" in strain):
+            cell_count_dict["Condition"].append(strain.split("-")[1].split("C")[0])
+        else:
+            cell_count_dict["Condition"].append("30")
 
         # Get overall cell counts
         all_strain_outlier_cells = (
@@ -514,16 +671,23 @@ def tabulate_strain_cell_counts(all_cells, all_outlier_cells, output_dir, plate,
                 cell_count_dict[f"{replicate}_{cc_stage}_Outlier_Cells"].append(all_strain_outlier_cc_rep_cells)
 
     # Export cell count dataframe
-    (
-        pl
-        .DataFrame(cell_count_dict)
-        .sort(["Total_Cells"], descending=True)
-        .write_csv(f"{output_dir}/{plate}_{compartment_name}_strain_cell_counts.csv")
-    )
+    cell_count_table = pl.DataFrame(cell_count_dict)
+    conditions = cell_count_table["Condition"].unique()
+    for condition in conditions:
+        if ("Dad2" in output_dir) and ("TSA" in plate):
+            output_file_name = f"{output_dir}/TSA_{condition}C_{str.split(plate, "_")[1]}_{compartment_name}_strain_cell_counts.csv"
+        else:
+            output_file_name = f"{output_dir}/{plate}_{compartment_name}_strain_cell_counts.csv"
+        (
+            cell_count_table
+            .filter(pl.col("Condition") == condition)
+            .sort(["Total_Cells"], descending=True)
+            .write_csv(output_file_name)
+        )
 
 
 def get_strain_hits(all_cells, outlier_cells, penetrance_table, wt_pens_dir, output_dir, plate,
-                    cc_stages=["G1", "SG2", "MAT"], percentile_cutoff=0.95):
+                    cc_stages=["G1", "SG2", "MAT"], sig_strain_pval_cutoff=0.05):
     """
     For a given compartment phenotype, identifies mutants that display phenotype at a higher/lower incidence relative
     to wildtype controls. Hit mutants are those that have CC penetrance above 95th wt percentile or below 5th percentile
@@ -537,93 +701,137 @@ def get_strain_hits(all_cells, outlier_cells, penetrance_table, wt_pens_dir, out
         output_dir (str): where to save output file to
         plate (str): plate identifier for saving files
         cc_stages (list(str), optional): list of cell cycle stages to filter by; defaults to ["G1", "SG2", "MAT"]
-        percentile_cutoff (float): threshold to use for obtaining significant penetrance cutoff from wildtype distribution
+        sig_strain_pval_cutoff (float): minimum empirical pvalue to use for obtaining candidate strains; defaults to 0.05
     """
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     if not os.path.exists(wt_pens_dir):
         os.makedirs(wt_pens_dir)
+    if not os.path.exists(f"{output_dir}/penetrance_distributions"):
+        os.makedirs(f"{output_dir}/penetrance_distributions")
 
     # To filter hits, I need to create a distribution of wildtype penetrances. In the penetrances file, I only have the
     # aggregate wildtype penetrance across all wells. However, I need to get the wildtype penetrance in each well to
     # create a distribution. Unique wells can be identified using Replicate/Row/Column.
-
+    
     all_wildtype_cells = (
         all_cells
         .filter(
-            (pl.col("ORF").is_in(['YOR202W', 'YMR271C']))
+            (pl.col("ORF").is_in(["YOR202W", "YMR271C"]))
+            )
         )
-    )
 
     all_wildtype_outliers = (
         outlier_cells
         .filter(
             (pl.col("ORF").is_in(['YOR202W', 'YMR271C']))
+            )
         )
-    )
-
-    # Create a log file for saving thresholds used for each cell cycle stage
-    log_dict = {"Plate": plate}
-
+    
     strain_hits_list = []
-    for cc_stage in cc_stages:
-        all_wildtype_cells_cc = all_wildtype_cells.filter(pl.col("Predicted_Label") == cc_stage)
-        all_wildtype_outliers_cc = all_wildtype_outliers.filter(pl.col("Predicted_Label") == cc_stage)
+    wildtype_pens = []
+    conditions = penetrance_table["Condition"].unique()
+    for condition in conditions:
+        for cc_stage in cc_stages:
+            all_wildtype_cells_cc = (
+                all_wildtype_cells
+                .filter(
+                    (pl.col("Predicted_Label") == cc_stage),
+                    (pl.col("Condition") == condition)
+                    )
+                )
+            
+            all_wildtype_outliers_cc = (
+                all_wildtype_outliers
+                .filter(
+                    (pl.col("Predicted_Label") == cc_stage),
+                    (pl.col("Condition") == condition)
+                    )
+                )
 
-        # Add an Is_Outlier column to all_wildtype_cells using information from all_wildtype_outliers
-        all_wildtype_cells_cc = (
-            all_wildtype_cells_cc
-            .with_columns(
-                (
-                    pl
-                    .when(pl.col("Cell_ID").is_in(all_wildtype_outliers_cc["Cell_ID"]))
-                    .then(True)
-                    .otherwise(False))
-                .alias("Is_Outlier")
+            # Add an Is_Outlier column to all_wildtype_cells using information from all_wildtype_outliers
+            all_wildtype_cells_cc = (
+                all_wildtype_cells_cc
+                .with_columns(
+                    (
+                        pl
+                        .when(pl.col("Cell_ID").is_in(all_wildtype_outliers_cc["Cell_ID"]))
+                        .then(True)
+                        .otherwise(False))
+                    .alias("Is_Outlier")
+                )
             )
-        )
 
-        wildtype_well_penetrances = (
-            all_wildtype_cells_cc
-            .group_by(["Replicate", "Row", "Column"])  # group by wells
-            .agg(
-                (pl.col("Is_Outlier") == True).sum().alias("Outliers"),  # get number of outliers and total cells
-                (pl.len().alias("Total"))
+            wildtype_well_penetrances = (
+                all_wildtype_cells_cc
+                .group_by(["Replicate", "Condition", "Row", "Column", "Predicted_Label"])  # group by wells
+                .agg(
+                    (pl.col("Is_Outlier") == True).sum().alias("Outliers"),  # get number of outliers and total cells
+                    (pl.len().alias("Total"))
+                )
+                .with_columns((pl.col("Outliers") / pl.col("Total")).alias("Penetrance"))  # calculate well penetrance
             )
-            .with_columns((pl.col("Outliers") / pl.col("Total")).alias("Penetrance"))  # calculate well penetrance
-        )
-        wildtype_well_penetrances.write_csv(f"{wt_pens_dir}/{plate}_per_well_wt_penetrances.csv")
+            wildtype_pens.append(wildtype_well_penetrances)
+            
+            # Use empirical p-values to identify strain hits
+            penetrance_table_condition = (
+                penetrance_table
+                .filter((pl.col("Condition") == condition))
+                .with_columns(
+                    (
+                        pl.col(f"Overall_{cc_stage}_Penetrance").map_elements(
+                            lambda x: (
+                                1 + (wildtype_well_penetrances["Penetrance"] >= x).sum()
+                                ) / (wildtype_well_penetrances.height + 1),
+                            return_dtype=pl.Float64)
+                        ).alias(f"{cc_stage}_pval")
+                    )
+                )
 
-        # Get cutoffs
-        pen_cutoff = wildtype_well_penetrances["Penetrance"].quantile(quantile=percentile_cutoff,
-                                                                      interpolation="nearest")
+            # Identify hits as those with pval < sig_strainpval_cutoff
+            strain_hits = (
+                penetrance_table_condition
+                .filter(pl.col(f"{cc_stage}_pval") < sig_strain_pval_cutoff)
+                .with_columns((pl.lit(cc_stage).alias("CC_Stage")))
+                .rename(
+                    {
+                        f"Overall_{cc_stage}_Penetrance": "Penetrance",
+                        f"{cc_stage}_pval": "pval"
+                    }
+                )
+                .select(["ORF", "Name", "Strain_ID", "Condition", "CC_Stage", "Penetrance", f"pval"])
+                )
+            strain_hits_list.append(strain_hits)
+            
+            # Plot distributions
+            sns.kdeplot(strain_hits["Penetrance"], color="#bb565c", fill=True, alpha=0.3, label="mutant strains")
+            sns.kdeplot(wildtype_well_penetrances["Penetrance"], color="#669bbc", fill=True, alpha=0.3, label="wildtype strains")
+            
+            plt.xlabel("Penetrance")
+            plt.ylabel("Density")
+            plt.legend(loc="upper left")
+            
+            if ("Dad2" in output_dir) and ("TSA" in plate):
+                plt.title(f"Penetrance Distribution ({f"TSA_{condition}C_{str.split(plate, '_')[1]}"} | {cc_stage})")
+                plt.savefig(f"{output_dir}/penetrance_distributions/{f"TSA_{condition}C_{str.split(plate, '_')[1]}"}_{cc_stage}_penetrance_distributions.png")
+            else:
+                plt.title(f"Penetrance Distribution ({plate} | {cc_stage})")
+                plt.savefig(f"{output_dir}/penetrance_distributions/{plate}_{cc_stage}_penetrance_distributions.png")
+            
+            plt.close()
 
-        log_dict[f"{cc_stage}_Cutoff"] = pen_cutoff
-
-        # Use cutoffs to identify hit genes for each given CC stage
-        strains_past_wt_cutoff = (
-            penetrance_table
-            .filter(pl.col(f"Overall_{cc_stage}_Penetrance") > pen_cutoff)
-            .with_columns(
-                (pl.lit(cc_stage).alias("CC_Stage")),
-                (pl.col(f"Overall_{cc_stage}_Penetrance").alias("Penetrance"))
-            )
-            .select(["ORF", "Name", "Strain_ID", "CC_Stage", "Penetrance"])
-        )
-        strain_hits_list.append(strains_past_wt_cutoff)
-
-    (
-        pl
-        .concat(items=strain_hits_list, how="vertical")
-        .write_csv(f"{output_dir}/{plate}_hit_strains.csv")
-    )
-
-    (
-        pl
-        .DataFrame(log_dict)
-        .write_csv(f"{output_dir}/{plate}_thresholds_used_for_getting_strain_hits.csv")
-    )
+    # Export wildtype pens and hit strains
+    wildtype_pens = pl.concat(wildtype_pens, how="vertical")
+    strain_hits = pl.concat(items=strain_hits_list, how="vertical")
+    if ("Dad2" in wt_pens_dir) and "TSA" in plate:
+        conditions = wildtype_pens["Condition"].unique()
+        for condition in conditions:
+            wildtype_pens.filter(pl.col("Condition") == condition).write_csv(f"{wt_pens_dir}/TSA_{condition}C_{str.split(plate, "_")[1]}_per_well_wt_penetrances.csv")
+            strain_hits.filter(pl.col("Condition") == condition).write_csv(f"{output_dir}/TSA_{condition}C_{str.split(plate, "_")[1]}_hit_strains.csv")
+    else:
+        wildtype_pens.write_csv(f"{wt_pens_dir}/{plate}_per_well_wt_penetrances.csv")
+        strain_hits.filter(pl.col("Condition") == condition).write_csv(f"{output_dir}/{plate}_hit_strains.csv")
 
 
 def run_all_functions(
@@ -644,7 +852,7 @@ def run_all_functions(
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95):
+        sig_strain_pval_cutoff=0.05):
     """
     Runs all functions (scale_compartment_feature(), identify_outlier_cells(), calculate_strain_penetrances(),
     tabulate_strain_cell_counts(), get_strain_hits()) at once.
@@ -667,7 +875,7 @@ def run_all_functions(
         cell_cycle_stages (list(str)): what cell cycle stages to consider when getting phenotype info. Defaults to all cell cycle stages
         outlier_pval_cutoff (float): what p-val cutoff to use from scaled feature p-values when getting outlier objects. Defaults to 0.05
         right_sided_outliers (bool): p-vals are left- and right-sided; choose True to look at right-sided pvals when getting outlier objects and False to look at left-sided pvals. Defaults to True
-        percentile_cutoff (float): what cutoff to use when getting the penetrance cutoff from a wildtype distribution prior to identifying significant strains. Defaults to 0.95
+        sig_strain_pval_cutoff (float): minimum empirical pvalue to use for obtaining candidate strains; defaults to 0.05
     """
 
     all_objects_scaled = scale_compartment_feature(
@@ -714,7 +922,7 @@ def run_all_functions(
         output_dir=strain_hits_dir,
         plate=plate,
         cc_stages=cell_cycle_stages,
-        percentile_cutoff=percentile_cutoff)
+        sig_strain_pval_cutoff=sig_strain_pval_cutoff)
 
 
 def combine_output_phenotypes_from_plate(phenotype_outliers, db_path, output_dir, plate):
@@ -1408,7 +1616,7 @@ def get_shape_outliers_for_multi_foci_comps(
         pval_cutoff=0.05,
         feature_value="",
         right_sided_outliers=True,
-        percentile_cutoff=0.95):
+        sig_strain_pval_cutoff=0.05):
     """
     Identifies cells with a significant number of their subcellular compartments being abnormally shaped (
     e.g., too large/small or too elongated) using the following steps:
@@ -1435,7 +1643,7 @@ def get_shape_outliers_for_multi_foci_comps(
         pval_cutoff (float, optional): p-value cutoff for identifying outliers; cells with p-value below this are tagged outlier
         feature_value (Optional(str, float)): if using exact feature value instead of p-val to get outliers, indicate it here. When right_sided_outliers is True, outliers will be cells with feature_name > feature value.
         right_sided_outliers (bool): when set to true, only looks at cells with positive Z-Scores (indicating that they're above the wt distribution) when looking for outliers
-        percentile_cutoff (float): threshold to use for obtaining significant penetrance cutoff from wildtype distribution
+        sig_strain_pval_cutoff (float): minimum empirical pvalue to use for obtaining candidate strains; defaults to 0.05
     """
 
     if not os.path.exists(proportions_dir):
@@ -1599,7 +1807,7 @@ def get_shape_outliers_for_multi_foci_comps(
         output_dir=strain_hits_dir,
         plate=plate,
         cc_stages=cell_cycle_stages,
-        percentile_cutoff=percentile_cutoff)
+        sig_strain_pval_cutoff=sig_strain_pval_cutoff)
 
 
 def generate_comp_size_table(db_path, comp_name):
