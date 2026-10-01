@@ -113,10 +113,5 @@ if __name__ == '__main__':
             output_name="all_hit_strains"
         )
 
-        combine_files(
-            directory=strain_hits_dir,
-            file_suffix="*_thresholds_used_for_getting_strain_hits",
-            output_name="all_thresholds_used_for_getting_strain_hits"
-        )
 
     print("Complete.")
