@@ -5,12 +5,7 @@ from scipy import stats
 import sqlite3
 from statistics import stdev, mean
 
-from GEN_outlier_detection_functions import (scale_compartment_feature,
-                                             identify_outlier_cells,
-                                             calculate_strain_penetrances,
-                                             tabulate_strain_cell_counts,
-                                             get_strain_hits,
-                                             run_all_functions,
+from GEN_outlier_detection_functions import (run_all_functions,
                                              combine_output_phenotypes_from_plate
                                              )
 
@@ -54,7 +49,7 @@ if __name__ == '__main__':
             cell_cycle_stages=["G1", "SG2", "MAT"],
             outlier_pval_cutoff=0.05,
             right_sided_outliers=True,
-            percentile_cutoff=0.95)
+            sig_strain_pval_cutoff=0.05)
 
     # small cells
     run_all_functions(
@@ -75,7 +70,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== CELL ELONGATION/APOLARITY DEFECTS ==============================
@@ -98,7 +93,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
     # apolar cells
     run_all_functions(
@@ -119,7 +114,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== COMBINE PHENOTYPES ==============================
@@ -133,6 +128,14 @@ if __name__ == '__main__':
         db_path=args.database_path,
         output_dir=args.output_directory,
         plate=args.plate)
+    
+    # Delete the TSA outlier cell files if screen is Dad2. Dad2 already has 26C/37C outliers saved separately like all other
+    # screens, but because of the way its dataframes are set up, I also needed to save the combined file for this script to work.
+    if ("Dad2" in args.database_path) and ("TSA" in args.plate):
+        os.remove(f"{args.output_directory}/abnormal_cell_size/abnormally_small_cells/outlier_cells/{args.plate}_Cell_outlier_cells.csv")
+        os.remove(f"{args.output_directory}/abnormal_cell_size/abnormally_large_cells/outlier_cells/{args.plate}_Cell_outlier_cells.csv")
+        os.remove(f"{args.output_directory}/abnormal_cell_eccentricity/abnormally_elongated/outlier_cells/{args.plate}_Cell_outlier_cells.csv")
+        os.remove(f"{args.output_directory}/abnormal_cell_eccentricity/abnormally_round/outlier_cells/{args.plate}_Cell_outlier_cells.csv")
 
 
 print("Complete.")
