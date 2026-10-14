@@ -63,7 +63,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
     # few APs
     run_all_functions(
@@ -83,7 +83,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== AP COVERAGE (TOO LOW/HIGH) ==============================
@@ -112,7 +112,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
     # low coverage
     run_all_functions(
@@ -132,7 +132,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== AP DISPERSION (SPREAD OUT/CLUSTERED) ==============================
@@ -164,7 +164,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
     # low dispersion (clustered/aggregated)
     run_all_functions(
@@ -184,7 +184,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== AP STD INTENSITY (TOO HIGH/TOO LOW) ==============================
@@ -209,7 +209,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
     # high uniformity
     run_all_functions(
@@ -229,34 +229,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
-
-
-# ============================== NO AP LOCALIZATION TO BUD ==============================
-    # In late G1/early SG2 when the bud forms, APs begin largely localizing there. Sometimes,
-    # this may not happen. The feature MassDisplacement looks at where most of the GFP signal
-    # is relative to the cell's center. The higher it is, the closer the signal is to the edges.
-
-    # high mass displacement
-    run_all_functions(
-        db_path=args.database_path,
-        all_cells=all_cells,
-        compartment_table_name="Per_Cell",
-        feature_name="Cell_Intensity_MassDisplacement_GFP",
-        scaled_feature_dir=f"{args.output_directory}/abnormal_bud_localization/scaled_features",
-        outlier_objects_dir=f"{args.output_directory}/abnormal_bud_localization/outlier_cells",
-        penetrance_dir=f"{args.output_directory}/abnormal_bud_localization/penetrances",
-        cell_count_dir=f"{args.output_directory}/abnormal_bud_localization/cell_counts",
-        strain_hits_dir=f"{args.output_directory}/abnormal_bud_localization/strain_hits",
-        wt_pens_dir=f"{args.output_directory}/abnormal_bud_localization/per_well_wt_pens",
-        plate=args.plate,
-        compartment_name="APs",
-        excluded_outlier_cc_stages=["G1", "MAT"], # G1s typically don't have a bud and MAT is past the bud formation stage
-        feature_table="",
-        cell_cycle_stages=["G1", "SG2", "MAT"],
-        outlier_pval_cutoff=0.05,
-        right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 # ============================== COMBINE PHENOTYPES ==============================
     combine_output_phenotypes_from_plate(
@@ -269,7 +242,6 @@ if __name__ == '__main__':
             "Clustered": f"{args.output_directory}/abnormal_ap_dispersion/low_dispersion/outlier_cells/{args.plate}_APs_outlier_cells.csv",
             "HighUniform": f"{args.output_directory}/abnormal_ap_uniformity/high_uniformity/outlier_cells/{args.plate}_APs_outlier_cells.csv",
             "LowUniform": f"{args.output_directory}/abnormal_ap_uniformity/low_uniformity/outlier_cells/{args.plate}_APs_outlier_cells.csv",
-            "NoBudLocal": f"{args.output_directory}/abnormal_bud_localization/outlier_cells/{args.plate}_APs_outlier_cells.csv"
         },
         db_path=args.database_path,
         output_dir=args.output_directory,

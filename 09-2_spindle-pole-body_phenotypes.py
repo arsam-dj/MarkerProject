@@ -406,7 +406,7 @@ if __name__ == '__main__':
         wt_pens_dir=f"{args.output_directory}/unseparated_spbs/per_well_wt_pens",
         plate=args.plate,
         cc_stages=["G1", "SG2", "MAT"],
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== NUMBER OF SPBs IN CELL (TOO FEW/TOO MANY) ==============================
@@ -499,7 +499,7 @@ if __name__ == '__main__':
         wt_pens_dir=f"{args.output_directory}/abnormal_spb_count/many_spb/per_well_wt_pens",
         plate=args.plate,
         cc_stages=["G1", "SG2", "MAT"],
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
     # few SPB
     too_few_outliers = get_cells_with_abnormal_spb_count(
@@ -534,7 +534,7 @@ if __name__ == '__main__':
         wt_pens_dir=f"{args.output_directory}/abnormal_spb_count/few_spb/per_well_wt_pens",
         plate=args.plate,
         cc_stages=["G1", "SG2", "MAT"],
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== UNEXPECTED SPB SIZE (TOO SMALL/TOO LARGE) ==============================
@@ -560,7 +560,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
     # small SPB
     run_all_functions(
@@ -580,7 +580,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== ABNORMAL DISTANCE AND ORIENTATION ==============================
@@ -610,7 +610,7 @@ if __name__ == '__main__':
             cell_cycle_stages=["G1", "SG2", "MAT"],
             outlier_pval_cutoff=0.05,
             right_sided_outliers=False,
-            percentile_cutoff=0.95)
+            sig_strain_pval_cutoff=0.05)
 
     # abnormally far
     run_all_functions(
@@ -631,7 +631,7 @@ if __name__ == '__main__':
             cell_cycle_stages=["G1", "SG2", "MAT"],
             outlier_pval_cutoff=0.05,
             right_sided_outliers=True,
-            percentile_cutoff=0.95)
+            sig_strain_pval_cutoff=0.05)
 
     # spb misaligned with cell
     misalignment_scaled = scale_compartment_feature(
@@ -694,7 +694,7 @@ if __name__ == '__main__':
         output_dir=f"{args.output_directory}/abnormal_spb_distance_orientation/abnormal_orientation/strain_hits",
         plate=args.plate,
         cc_stages=["G1", "SG2", "MAT"],
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== COMBINE PHENOTYPES ==============================

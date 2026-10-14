@@ -102,7 +102,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
     
     run_all_functions(
         db_path=args.database_path,
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 # ============================== NUCLEOLUS STD INTENSITY (TOO HIGH/TOO LOW) ==============================
     # high uniformity (per cell -- find nucleoli with very low signal)
@@ -142,7 +142,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 # ============================== ABNORMAL NUCLEOLAR COUNT ==============================
     conn = sqlite3.connect(args.database_path)
@@ -197,7 +197,7 @@ if __name__ == '__main__':
         output_dir=f"{args.output_directory}/abnormal_nucleolus_number/strain_hits",
         plate=args.plate,
         cc_stages=["G1", "SG2", "MAT"],
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 # ============================== COMBINE PHENOTYPES ==============================
     combine_output_phenotypes_from_plate(

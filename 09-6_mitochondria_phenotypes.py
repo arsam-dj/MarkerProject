@@ -61,7 +61,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== MITOCHONDRIA COVERAGE (TOO LOW/HIGH) ==============================
@@ -90,7 +90,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
     # low coverage
     run_all_functions(
@@ -110,7 +110,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== MITOCHONDRIA STD INTENSITY (TOO HIGH/TOO LOW) ==============================
@@ -141,7 +141,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
     # high uniformity
     run_all_functions(
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== BRIGHT MITOCHONDRIA ==============================
@@ -187,7 +187,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== COMBINE PHENOTYPES ==============================

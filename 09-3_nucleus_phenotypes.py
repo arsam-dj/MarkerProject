@@ -63,52 +63,52 @@ if __name__ == '__main__':
     )
     conn.close()
 
-## ============================== NUCLEAR SIZE RELATIVE TO CELL SIZE (TOO HIGH/TOO LOW) ==============================
-#
-#    nuclear_cell_ratios = nuclear_cell_ratio_table(db_path=args.database_path)
-#
-#    # large size
-#    run_all_functions(
-#        db_path=args.database_path,
-#        all_cells=all_cells,
-#        compartment_table_name="Per_Nuclei",
-#        feature_name="Nuclear_Area_Over_Cell_Area",
-#        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_size/scaled_features",
-#        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/outlier_cells",
-#        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/penetrances",
-#        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/cell_counts",
-#        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/strain_hits",
-#        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/per_well_wt_pens",
-#        plate=args.plate,
-#        compartment_name="Nuclei",
-#        feature_table=nuclear_cell_ratios,
-#        cell_cycle_stages=["G1", "SG2", "MAT"],
-#        outlier_pval_cutoff=0.05,
-#        right_sided_outliers=True,
-#        percentile_cutoff=0.95)
-#
-#    # large size
-#    run_all_functions(
-#        db_path=args.database_path,
-#        all_cells=all_cells,
-#        compartment_table_name="Per_Nuclei",
-#        feature_name="Nuclear_Area_Over_Cell_Area",
-#        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_size/scaled_features",
-#        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/outlier_cells",
-#        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/penetrances",
-#        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/cell_counts",
-#        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/strain_hits",
-#        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/per_well_wt_pens",
-#        plate=args.plate,
-#        compartment_name="Nuclei",
-#        feature_table=nuclear_cell_ratios,
-#        cell_cycle_stages=["G1", "SG2", "MAT"],
-#        outlier_pval_cutoff=0.05,
-#        right_sided_outliers=False,
-#        percentile_cutoff=0.95)
-#
-#
-## ============================== NUCLEUS SIGNAL (TOO LOW) ==============================
+# ============================== NUCLEAR SIZE RELATIVE TO CELL SIZE (TOO HIGH/TOO LOW) ==============================
+
+    nuclear_cell_ratios = nuclear_cell_ratio_table(db_path=args.database_path)
+
+    # large size
+    run_all_functions(
+        db_path=args.database_path,
+        all_cells=all_cells,
+        compartment_table_name="Per_Nuclei",
+        feature_name="Nuclear_Area_Over_Cell_Area",
+        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_size/scaled_features",
+        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/outlier_cells",
+        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/penetrances",
+        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/cell_counts",
+        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/strain_hits",
+        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_size/large_size/per_well_wt_pens",
+        plate=args.plate,
+        compartment_name="Nuclei",
+        feature_table=nuclear_cell_ratios,
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        outlier_pval_cutoff=0.05,
+        right_sided_outliers=True,
+        sig_strain_pval_cutoff=0.05)
+
+    # large size
+    run_all_functions(
+        db_path=args.database_path,
+        all_cells=all_cells,
+        compartment_table_name="Per_Nuclei",
+        feature_name="Nuclear_Area_Over_Cell_Area",
+        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_size/scaled_features",
+        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/outlier_cells",
+        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/penetrances",
+        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/cell_counts",
+        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/strain_hits",
+        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_size/small_size/per_well_wt_pens",
+        plate=args.plate,
+        compartment_name="Nuclei",
+        feature_table=nuclear_cell_ratios,
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        outlier_pval_cutoff=0.05,
+        right_sided_outliers=False,
+        sig_strain_pval_cutoff=0.05)
+
+
+# ============================== NUCLEUS SIGNAL (TOO LOW) ==============================
     iint_norm_table = generate_iint_norm_table(db_path=args.database_path, channel="RFP")
 
     # low signal
@@ -129,36 +129,36 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
-## ============================== ABNORMAL NUCLEAR SOLIDITY ==============================
-#    solidity_feature_table = generate_compartment_feature_table(
-#        db_path=args.database_path,
-#        feature="Nuclei_AreaShape_Solidity",
-#        comp_name="Nuclei")
-#
-#    run_all_functions(
-#        db_path=args.database_path,
-#        all_cells=all_cells,
-#        compartment_table_name="Per_Nuclei",
-#        feature_name="Nuclei_AreaShape_Solidity",
-#        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_solidity/scaled_features",
-#        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_solidity/outlier_cells",
-#        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_solidity/penetrances",
-#        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_solidity/cell_counts",
-#        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_solidity/strain_hits",
-#        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_solidity/per_well_wt_pens",
-#        plate=args.plate,
-#        compartment_name="Nuclei",
-#        feature_table=solidity_feature_table,
-#        cell_cycle_stages=["G1", "SG2", "MAT"],
-#        outlier_pval_cutoff=0.01,
-#        right_sided_outliers=False,
-#        percentile_cutoff=0.95)
-#
-#
-## ============================== COMBINE PHENOTYPES ==============================
+# ============================== ABNORMAL NUCLEAR SOLIDITY ==============================
+    solidity_feature_table = generate_compartment_feature_table(
+        db_path=args.database_path,
+        feature="Nuclei_AreaShape_Solidity",
+        comp_name="Nuclei")
+
+    run_all_functions(
+        db_path=args.database_path,
+        all_cells=all_cells,
+        compartment_table_name="Per_Nuclei",
+        feature_name="Nuclei_AreaShape_Solidity",
+        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_solidity/scaled_features",
+        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_solidity/outlier_cells",
+        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_solidity/penetrances",
+        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_solidity/cell_counts",
+        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_solidity/strain_hits",
+        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_solidity/per_well_wt_pens",
+        plate=args.plate,
+        compartment_name="Nuclei",
+        feature_table=solidity_feature_table,
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        outlier_pval_cutoff=0.01,
+        right_sided_outliers=False,
+        sig_strain_pval_cutoff=0.05)
+
+
+# ============================== COMBINE PHENOTYPES ==============================
     combine_output_phenotypes_from_plate(
         phenotype_outliers={
             "LargeNuclei": f"{args.output_directory}/abnormal_nuclear_size/large_size/outlier_cells/{args.plate}_Nuclei_outlier_cells.csv",

@@ -113,7 +113,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== THICK/THIN SEPTIN ==============================
@@ -137,7 +137,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
     
     # thin septin
     run_all_functions(
@@ -157,7 +157,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
   
     
 # ============================== LARGE/SMALL SEPTIN ==============================
@@ -181,7 +181,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=True,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
     
     # small septin
     run_all_functions(
@@ -201,7 +201,7 @@ if __name__ == '__main__':
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
     
     
 # ============================== MISORIENTED SEPTIN ==============================
@@ -329,7 +329,7 @@ if __name__ == '__main__':
         output_dir=f"{args.output_directory}/abnormal_septin_orientation/strain_hits",
         plate=args.plate,
         cc_stages=["SG2", "MAT"],
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== IMPROPERLY FORMED SEPTIN ==============================
@@ -384,7 +384,7 @@ if __name__ == '__main__':
         output_dir=f"{args.output_directory}/septin_fragmentation/strain_hits",
         plate=args.plate,
         cc_stages=["G1", "SG2", "MAT"],
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
 
 
 # ============================== UNDEFINED PHENOTYPE ==============================
@@ -444,7 +444,7 @@ if __name__ == '__main__':
         output_dir=f"{args.output_directory}/undefined_phenotype/strain_hits",
         plate=args.plate,
         cc_stages=["G1", "SG2", "MAT"],
-        percentile_cutoff=0.95)
+        sig_strain_pval_cutoff=0.05)
     
     
 # ============================== COMBINE PHENOTYPES ==============================
