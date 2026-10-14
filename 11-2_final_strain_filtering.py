@@ -61,8 +61,11 @@ def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_pat
             ).alias("Name"),
             pl.sum_horizontal(["Total_Num_Cells_R1", "Total_Num_Cells_R2", "Total_Num_Cells_R3"]).alias("Total_Num_Cells"),
             pl.sum_horizontal(
+                pl.col(["Total_Num_Cells_R1", "Total_Num_Cells_R2", "Total_Num_Cells_R3"]) >= 20
+            ).alias("Num_Reps_Over_20_Cells"),
+            pl.sum_horizontal(
                 pl.col(["Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3"]).is_null()
-            ).alias("Num_Null_Dists")
+            ).alias("Num_Null_Dists"),
         )
         .join(penetrances, on=["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"])
     )
@@ -153,6 +156,13 @@ if __name__ == '__main__':
     sheetA = combine_cell_counts_with_penetrances(
         per_rep_cell_count_path=args.cell_counts, penetrance_path=args.penetrances)
 
+    sheetA = (
+        sheetA
+        .with_columns(
+            (pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std()).alias("Std_Rep_Distance")
+        )
+    )
+
     # Sheet B: no WT, no ORFs near marker/HTA2/CAN1/LYP1, no dubious ORFs, no strains with info from only one rep
     sheetB = (
         sheetA
@@ -165,28 +175,27 @@ if __name__ == '__main__':
     )
 
 
-    # Sheet C: above + no cases with < set min. total cell count + no cases with < 20 cells in any of their reps + no cases
+    # Sheet C: above + no cases with < set min. total cell count + no cases with < 20 cells in 2-3 reps + no cases
     # with too much variation in rep-rep pens (unless all replicates have penetrance >= 30)
     sheetC = (
         sheetB
-        .with_columns(pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std().alias("Std_Distance"))
         .filter(
             (pl.col("Total_Num_Cells") >= int(args.min_num_cells)),
-            (pl.col("Total_Num_Cells_R1") >= 20),
-            (pl.col("Total_Num_Cells_R2") >= 20),
-            (pl.col("Total_Num_Cells_R3") >= 20),
+            (pl.col("Num_Reps_Over_20_Cells") >= 2)
+            #(pl.col("Total_Num_Cells_R1") >= 20),
+            #(pl.col("Total_Num_Cells_R2") >= 20),
+            #(pl.col("Total_Num_Cells_R3") >= 20),
         )
     )
 
     strains_above_30pen = sheetC.filter(
         (pl.col("Penetrance_R1") >= 30) & (pl.col("Penetrance_R2") >= 30) & (pl.col("Penetrance_R3") >= 30))
-    strains_with_high_rep_agreement = sheetC.filter((pl.col("Std_Distance")) <= 5)
+    strains_with_high_rep_agreement = sheetC.filter(pl.col("Std_Rep_Distance") <= 10)
     strains_to_keep = pl.concat([strains_above_30pen, strains_with_high_rep_agreement], how="vertical")
 
     sheetC = (
         sheetC
         .filter(pl.col("Strain_ID").is_in(strains_to_keep["Strain_ID"]))
-        .drop("Std_Distance")
     )
     
     # Sheet D: above + min. penetrance is greater than 95th perc. of wt strains
@@ -196,13 +205,14 @@ if __name__ == '__main__':
             pl.col("Strain_ID").is_in(wildtype_strains["Strain"]),
             pl.col("Num_Null_Dists") != 3
         )
-        .with_columns(pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std().alias("Std_Distance"))
+        .with_columns(pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std().alias("Std_Rep_Distance"))
         .filter(
             (pl.col("Total_Num_Cells") >= int(args.min_num_cells)),
-            (pl.col("Total_Num_Cells_R1") >= 20),
-            (pl.col("Total_Num_Cells_R2") >= 20),
-            (pl.col("Total_Num_Cells_R3") >= 20),
-            (pl.col("Std_Distance") <= 5)
+            (pl.col("Num_Reps_Over_20_Cells") >= 2),
+            #(pl.col("Total_Num_Cells_R1") >= 20),
+            #(pl.col("Total_Num_Cells_R2") >= 20),
+            #(pl.col("Total_Num_Cells_R3") >= 20),
+            (pl.col("Std_Rep_Distance") <= 10)
         )
     )
 
@@ -234,7 +244,7 @@ if __name__ == '__main__':
     )
 
     # Export
-    dropped_cols = ["Num_Null_Dists",
+    dropped_cols = ["Num_Null_Dists", "Num_Reps_Over_20_Cells",
                     "Penetrance_R1", "Penetrance_R2", "Penetrance_R3",
                     "Total_Num_Cells_R1", "Total_Num_Cells_R2", "Total_Num_Cells_R3",
                     "Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3"]
