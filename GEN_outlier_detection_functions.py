@@ -241,15 +241,18 @@ def scale_compartment_feature(db_path, table_name, feature_name, output_dir, pla
                     f"{output_dir}/distribution_histograms/{plate}_{feature_name}_{replicate}_{condition}_{cc_stage}_raw.png")
                 plt.close()
 
-                plt.hist(mutant_cells[f"{feature_name}_Scaled"], bins=100, color="#bb565c", edgecolor="black", label="mutant cells")
-                plt.hist(wt_cells[f"{feature_name}_Scaled"], bins=100, color="#446e88", edgecolor="black", label="wildtype cells")
-                plt.title(f"Scaled {feature_name} Distribution ({replicate} | {condition}C | {cc_stage})")
-                plt.xlabel("Value")
-                plt.ylabel("Frequency")
-                plt.legend(loc="upper left")
-                plt.savefig(
-                    f"{output_dir}/distribution_histograms/{plate}_{feature_name}_{replicate}_{condition}_{cc_stage}_scaled.png")
-                plt.close()
+                try: # can't plot this if MAD is 0 (causing Z scores to be NaN or +/-inf)
+                    plt.hist(mutant_cells[f"{feature_name}_Scaled"], bins=100, color="#bb565c", edgecolor="black", label="mutant cells")
+                    plt.hist(wt_cells[f"{feature_name}_Scaled"], bins=100, color="#446e88", edgecolor="black", label="wildtype cells")
+                    plt.title(f"Scaled {feature_name} Distribution ({replicate} | {condition}C | {cc_stage})")
+                    plt.xlabel("Value")
+                    plt.ylabel("Frequency")
+                    plt.legend(loc="upper left")
+                    plt.savefig(
+                        f"{output_dir}/distribution_histograms/{plate}_{feature_name}_{replicate}_{condition}_{cc_stage}_scaled.png")
+                    plt.close()
+                except ValueError:
+                    print("Cannot plot Z-Scores.")
 
                 plt.hist(mutant_cells.filter(pl.col("pval") <= 0.05)["pval"], bins=100, color="#bb565c", edgecolor="black",
                          label="mutant cells")
