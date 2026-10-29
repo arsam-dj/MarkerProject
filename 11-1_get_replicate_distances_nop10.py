@@ -266,7 +266,7 @@ def get_per_rep_pens_cell_counts_and_distances(database_directory, outlier_cells
         merged_cell_counts
         .group_by(["Plate", "Replicate", "Row", "Column", "ORF", "Name", "Strain_ID"]) # this is where Plate04/05 gets merged with Plate01/02/03
         .agg(pl.col("Total_Num_Cells").sum().alias("Total_Num_Cells"))
-        .join(outlier_cell_counts, on=["Plate", "Replicate", "Row", "Column", "ORF", "Name", "Strain_ID"])
+        .join(outlier_cell_counts, on=["Plate", "Replicate", "Row", "Column", "ORF", "Name", "Strain_ID"], how="left")
         .with_columns(
             ((pl.col("Num_Outliers") / pl.col("Total_Num_Cells")) * 100).alias("Penetrance"),
             pl.col("Replicate").replace({"TS1": "R1", "TS2": "R2", "TS3": "R3"})
