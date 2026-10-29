@@ -359,6 +359,9 @@ def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_df)
             ).alias("Name"),
             pl.sum_horizontal(["Total_Num_Cells_R1", "Total_Num_Cells_R2", "Total_Num_Cells_R3"]).alias("Total_Num_Cells"),
             pl.sum_horizontal(
+                pl.col(["Total_Num_Cells_R1", "Total_Num_Cells_R2", "Total_Num_Cells_R3"]) >= 20
+            ).alias("Num_Reps_Over_20_Cells"),
+            pl.sum_horizontal(
                 pl.col(["Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3"]).is_null()
             ).alias("Num_Null_Dists")
         )
@@ -368,11 +371,51 @@ def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_df)
     return merged_df
 
 
-def get_all_strain_hits(phenotype_dir):
+def get_all_strain_hits(phenotype_dir, sheetA):
+    """
+    Loads each phenotype's per-CC hit list, then for each hit it determines its overall phenotype penetrance using SheetA.
+    If the overall phenotype penetrance is too low (<10%), then that hit is no longer considered a hit and thus removed.
+    This removes strains that for example have >20% penetrance in MAT, but only 4% overall penetrance.
+    """
     paths = Path(phenotype_dir).rglob("all_hit_strains.csv")
-    good_paths = [pl.read_csv(p) for p in paths if pl.read_csv(p).shape[0] > 0] # only keep dataframes that have at least one row
+    sheetA = (
+        sheetA
+        .with_columns(
+            (
+                pl
+                .when(pl.col("Name").is_null())
+                .then(pl.lit(""))
+                .otherwise(pl.col("Name"))
+            ).alias("Name")
+        )
+    )
+    paths_to_columns = pl.read_csv("/home/alex/alex_files/markerproject_redux/misc_files/sig_strain_paths_mapped_to_penetrance_columns.csv")
 
-    sig_strains = (
+    for path in paths:
+        phenotype_pens = paths_to_columns.filter(pl.col("Path") == str(path))["Phenotype_Penetrance"][0]
+        sheetA_phenotype_pens = sheetA.select(["ORF", "Name", "Strain_ID", phenotype_pens])
+        sig_strains = (
+            pl
+            .read_csv(path)
+            .with_columns(
+                (
+                    pl
+                    .when(pl.col("Name").is_null())
+                    .then(pl.lit(""))
+                    .otherwise(pl.col("Name"))
+                ).alias("Name")
+            )
+            .select(["ORF", "Name", "Strain_ID"])
+            .unique()
+            .join(sheetA_phenotype_pens, on=["ORF", "Name", "Strain_ID"], how="left")
+            .filter(pl.col(phenotype_pens) >= 0.1)
+            .rename({phenotype_pens: "Penetrance"})
+        )
+        sig_strains.write_csv(f"{str.split(str(path), '/all_hit_strains.csv')[0]}/all_hit_strains_filtered.csv")
+
+    paths_filtered = Path(phenotype_dir).rglob("all_hit_strains_filtered.csv")
+    good_paths = [pl.read_csv(p) for p in paths_filtered if pl.read_csv(p).shape[0] > 0] # only keep dataframes that have at least one row
+    all_sig_strains = (
         pl
         .concat(
             good_paths, how="vertical"
@@ -382,7 +425,7 @@ def get_all_strain_hits(phenotype_dir):
         .unique()
     )
 
-    return list(sig_strains["Strain_ID"])
+    return list(all_sig_strains["Strain_ID"])
 
 
 if __name__ == '__main__':
@@ -414,6 +457,13 @@ if __name__ == '__main__':
     # Sheet A: everything
     sheetA = combine_cell_counts_with_penetrances(
         per_rep_cell_count_path=args.cell_counts, penetrance_df=penetrance_df)
+    
+    sheetA = (
+        sheetA
+        .with_columns(
+            (pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std()).alias("Std_Rep_Distance")
+        )
+    )
 
     # Sheet B: no WT, no ORFs near marker/HTA2/CAN1/LYP1, no dubious ORFs, no strains with info from only one rep
     sheetB = (
@@ -427,28 +477,27 @@ if __name__ == '__main__':
     )
 
 
-    # Sheet C: above + no cases with < set min. total cell count + no cases with < 20 cells in any of their reps + no cases
+    # Sheet C: above + no cases with < set min. total cell count + no cases with < 20 cells in 2-3 reps + no cases
     # with too much variation in rep-rep pens (unless all replicates have penetrance >= 30)
     sheetC = (
         sheetB
-        .with_columns(pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std().alias("Std_Distance"))
         .filter(
             (pl.col("Total_Num_Cells") >= int(args.min_num_cells)),
-            (pl.col("Total_Num_Cells_R1") >= 20),
-            (pl.col("Total_Num_Cells_R2") >= 20),
-            (pl.col("Total_Num_Cells_R3") >= 20),
+            (pl.col("Num_Reps_Over_20_Cells") >= 2)
+            #(pl.col("Total_Num_Cells_R1") >= 20),
+            #(pl.col("Total_Num_Cells_R2") >= 20),
+            #(pl.col("Total_Num_Cells_R3") >= 20),
         )
     )
 
     strains_above_30pen = sheetC.filter(
         (pl.col("Penetrance_R1") >= 30) & (pl.col("Penetrance_R2") >= 30) & (pl.col("Penetrance_R3") >= 30))
-    strains_with_high_rep_agreement = sheetC.filter((pl.col("Std_Distance")) <= 5)
+    strains_with_high_rep_agreement = sheetC.filter(pl.col("Std_Rep_Distance") <= 10)
     strains_to_keep = pl.concat([strains_above_30pen, strains_with_high_rep_agreement], how="vertical")
 
     sheetC = (
         sheetC
         .filter(pl.col("Strain_ID").is_in(strains_to_keep["Strain_ID"]))
-        .drop("Std_Distance")
     )
     
     # Sheet D: above + min. penetrance is greater than 95th perc. of wt strains
@@ -458,45 +507,46 @@ if __name__ == '__main__':
             pl.col("Strain_ID").is_in(wildtype_strains["Strain"]),
             pl.col("Num_Null_Dists") != 3
         )
-        .with_columns(pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std().alias("Std_Distance"))
+        .with_columns(pl.concat_list("Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3").list.std().alias("Std_Rep_Distance"))
         .filter(
             (pl.col("Total_Num_Cells") >= int(args.min_num_cells)),
-            (pl.col("Total_Num_Cells_R1") >= 20),
-            (pl.col("Total_Num_Cells_R2") >= 20),
-            (pl.col("Total_Num_Cells_R3") >= 20),
-            (pl.col("Std_Distance") <= 5)
+            (pl.col("Num_Reps_Over_20_Cells") >= 2),
+            #(pl.col("Total_Num_Cells_R1") >= 20),
+            #(pl.col("Total_Num_Cells_R2") >= 20),
+            #(pl.col("Total_Num_Cells_R3") >= 20),
+            (pl.col("Std_Rep_Distance") <= 10)
         )
     )
 
     sheetD = (
         sheetC
         .filter(
-            (pl.col("Overall_Penetrance") >= wt_strains["Overall_Penetrance"].quantile(0.05))
+            (pl.col("Overall_Penetrance") >= wt_strains["Overall_Penetrance"].quantile(0.95))
         )
     )
 
-    # SheetE: above + no strains not sig in any one defect
-    sig_strains = get_all_strain_hits(args.phenotype_directory)
+    # Sheet E: above + no strains not sig in any one defect + no strains with low phenotype-specific penetrances
+    sig_strains = get_all_strain_hits(args.phenotype_directory, sheetA)
+    phenotype_pen_cols = [
+        column for column in sheetD.columns if
+        ("Overall" in column) and
+        (("G1" not in column) and ("SG2" not in column) and ("MAT" not in column) and ("Overall_Penetrance" not in column))
+    ]
+
     sheetE = (
         sheetD
         .filter(
-            (pl.col("Strain_ID").is_in(sig_strains)),
+            (pl.col("Strain_ID").is_in(sig_strains))
         )
-    )
-    
-    # Sheet F: above + no strains whose overall penetrance is below the median positive control penetrance
-    if args.positive_controls:
-        pos_ctrls = pl.read_csv(args.positive_controls)
-        pos_ctrl_pens = sheetE.filter(pl.col("ORF").is_in(pos_ctrls["ORF"])).select("Overall_Penetrance")
-        sheetF = (
-            sheetE
-            .filter(
-                (pl.col("Overall_Penetrance") > pos_ctrl_pens["Overall_Penetrance"].median())
+        .filter(
+            pl.any_horizontal(
+                pl.col(phenotype_pen_cols) >= 0.1
             )
         )
+    )
 
     # Export
-    dropped_cols = ["Num_Null_Dists",
+    dropped_cols = ["Num_Null_Dists", "Num_Reps_Over_20_Cells",
                     "Penetrance_R1", "Penetrance_R2", "Penetrance_R3",
                     "Total_Num_Cells_R1", "Total_Num_Cells_R2", "Total_Num_Cells_R3",
                     "Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3"]
@@ -506,8 +556,6 @@ if __name__ == '__main__':
     sheetC = sheetC.drop(dropped_cols)
     sheetD = sheetD.drop(dropped_cols)
     sheetE = sheetE.drop(dropped_cols)
-    if args.positive_controls:
-        sheetF = sheetF.drop(dropped_cols)
 
     with pd.ExcelWriter(f"{args.output_directory}/{args.screen}_filtered_strains.xlsx", engine="openpyxl") as writer:
         sheetA.to_pandas().to_excel(writer, sheet_name="SheetA", index=False)
@@ -515,7 +563,5 @@ if __name__ == '__main__':
         sheetC.to_pandas().to_excel(writer, sheet_name="SheetC", index=False)
         sheetD.to_pandas().to_excel(writer, sheet_name="SheetD", index=False)
         sheetE.to_pandas().to_excel(writer, sheet_name="SheetE", index=False)
-        if args.positive_controls:
-            sheetF.to_pandas().to_excel(writer, sheet_name="SheetF", index=False)
 
     print("Complete.")

@@ -16,7 +16,8 @@ args = parser.parse_args()
 
 # Sheet A: everything
 # Sheet B: no WT, no ORFs near marker/HTA2/CAN1/LYP1, no dubious ORFs, no strains with info from only one rep
-# Sheet C: above + no cases with < 51 total cell count + no cases with < 20 cells in any of their reps + no cases with too much variation in rep-rep pens
+# Sheet C: above + no cases with < set min. total cell count + no cases with < 20 cells in 2-3 reps + no cases
+#          with too much variation in rep-rep pens (unless all replicates have penetrance >= 30)
 # Sheet D: above + min. penetrance is greater than 95th perc. of wt strains
 # Sheet E: above + no strains not sig in any one defect + no strains with low phenotype-specific penetrances
 
