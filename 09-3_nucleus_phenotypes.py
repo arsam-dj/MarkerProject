@@ -108,24 +108,45 @@ if __name__ == '__main__':
         sig_strain_pval_cutoff=0.05)
 
 
-# ============================== NUCLEUS SIGNAL (TOO LOW) ==============================
-    iint_norm_table = generate_iint_norm_table(db_path=args.database_path, channel="RFP")
+# ============================== NUCLEAR STD INTENSITY (TOO HIGH/TOO LOW) ==============================
+    # The feature StdIntensity looks at the overall uniformity of the GFP channel within each cell.
+    # Higher StdIntensity suggests lower uniformity (e.g., there is greater pixel-to-pixel intensity deviation).
 
-    # low signal
+    # low uniformity
     run_all_functions(
         db_path=args.database_path,
         all_cells=all_cells,
         compartment_table_name="Per_Cell",
-        feature_name="IInt_Norm",
-        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_signal/low_signal/scaled_features",
-        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_signal/low_signal/outlier_cells",
-        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_signal/low_signal/penetrances",
-        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_signal/low_signal/cell_counts",
-        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_signal/low_signal/strain_hits",
-        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_signal/low_signal/per_well_wt_pens",
+        feature_name="Cell_Intensity_StdIntensity_GFP",
+        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/scaled_features",
+        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/low_uniformity/outlier_cells",
+        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/low_uniformity/penetrances",
+        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/low_uniformity/cell_counts",
+        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/low_uniformity/strain_hits",
+        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/low_uniformity/per_well_wt_pens",
         plate=args.plate,
         compartment_name="Nuclei",
-        feature_table=iint_norm_table,
+        feature_table="",
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        outlier_pval_cutoff=0.05,
+        right_sided_outliers=True,
+        sig_strain_pval_cutoff=0.05)
+
+    # high uniformity
+    run_all_functions(
+        db_path=args.database_path,
+        all_cells=all_cells,
+        compartment_table_name="Per_Cell",
+        feature_name="Cell_Intensity_StdIntensity_GFP",
+        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/scaled_features",
+        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/high_uniformity/outlier_cells",
+        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/high_uniformity/penetrances",
+        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/high_uniformity/cell_counts",
+        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/high_uniformity/strain_hits",
+        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_uniformity/high_uniformity/per_well_wt_pens",
+        plate=args.plate,
+        compartment_name="Nuclei",
+        feature_table="",
         cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
@@ -157,14 +178,40 @@ if __name__ == '__main__':
         right_sided_outliers=False,
         sig_strain_pval_cutoff=0.05)
 
+# ============================== ABNORMAL NUCLEAR FORM FACTOR ==============================
+    ff_feature_table = generate_compartment_feature_table(
+        db_path=args.database_path,
+        feature="Nuclei_AreaShape_FormFactor",
+        comp_name="Nuclei")
 
-# ============================== COMBINE PHENOTYPES ==============================
+    run_all_functions(
+        db_path=args.database_path,
+        all_cells=all_cells,
+        compartment_table_name="Per_Nuclei",
+        feature_name="Nuclei_AreaShape_FormFactor",
+        scaled_feature_dir=f"{args.output_directory}/abnormal_nuclear_form_factor/scaled_features",
+        outlier_objects_dir=f"{args.output_directory}/abnormal_nuclear_form_factor/outlier_cells",
+        penetrance_dir=f"{args.output_directory}/abnormal_nuclear_form_factor/penetrances",
+        cell_count_dir=f"{args.output_directory}/abnormal_nuclear_form_factor/cell_counts",
+        strain_hits_dir=f"{args.output_directory}/abnormal_nuclear_form_factor/strain_hits",
+        wt_pens_dir=f"{args.output_directory}/abnormal_nuclear_form_factor/per_well_wt_pens",
+        plate=args.plate,
+        compartment_name="Nuclei",
+        feature_table=ff_feature_table,
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        outlier_pval_cutoff=0.05,
+        right_sided_outliers=False,
+        sig_strain_pval_cutoff=0.05)
+
+    # ============================== COMBINE PHENOTYPES ==============================
     combine_output_phenotypes_from_plate(
         phenotype_outliers={
             "LargeNuclei": f"{args.output_directory}/abnormal_nuclear_size/large_size/outlier_cells/{args.plate}_Nuclei_outlier_cells.csv",
             "SmallNuclei": f"{args.output_directory}/abnormal_nuclear_size/small_size/outlier_cells/{args.plate}_Nuclei_outlier_cells.csv",
-            "LowSignal": f"{args.output_directory}/abnormal_nuclear_signal/low_signal/outlier_cells/{args.plate}_Nuclei_outlier_cells.csv",
-            "LowSolidity": f"{args.output_directory}/abnormal_nuclear_solidity/outlier_cells/{args.plate}_Nuclei_outlier_cells.csv"
+            "HighUniform": f"{args.output_directory}/abnormal_nuclear_uniformity/high_uniformity/outlier_cells/{args.plate}_Nuclei_outlier_cells.csv",
+            "LowUniform": f"{args.output_directory}/abnormal_nuclear_uniformity/low_uniformity/outlier_cells/{args.plate}_Nuclei_outlier_cells.csv",
+            "LowFF": f"{args.output_directory}/abnormal_nuclear_form_factor/outlier_cells/{args.plate}_Nuclei_outlier_cells.csv",
+            "LowSolidity": f"{args.output_directory}/abnormal_nuclear_solidity/outlier_cells/{args.plate}_Nuclei_outlier_cells.csv",
         },
         db_path=args.database_path,
         output_dir=args.output_directory,

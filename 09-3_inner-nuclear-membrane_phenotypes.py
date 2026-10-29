@@ -15,6 +15,41 @@ parser.add_argument('-p', '--plate', default='', help='Plate identifier for savi
 args = parser.parse_args()
 
 
+def inm_cell_ratio_table(db_path):
+    """
+    Get table with combined INM over cell area ratios for all cells.
+    
+    Args:
+        db_path (str): path to database
+    """
+
+    conn = sqlite3.connect(db_path)
+
+    ratios = pl.read_database(
+        query=f"""
+                SELECT 
+                    Replicate, 
+                    Condition, 
+                    Row, 
+                    Column, 
+                    Per_INM.Cell_ID,
+                    ORF, 
+                    Name, 
+                    Strain_ID, 
+                    Predicted_Label, 
+                    INM_Number_Object_Number,
+                    INM_AreaShape_Area / Cell_AreaShape_Area AS INM_Area_Over_Cell_Area
+                FROM Per_INM
+                JOIN (SELECT Cell_ID, Cell_AreaShape_Area, Predicted_Label FROM Per_Cell) pc
+                    ON Per_INM.Cell_ID = pc.Cell_ID;
+                """,
+        connection=conn)
+
+    conn.close()
+
+    return ratios
+
+
 if __name__ == '__main__':
 
     conn = sqlite3.connect(args.database_path)
@@ -26,6 +61,52 @@ if __name__ == '__main__':
         )
     )
     conn.close()
+
+
+# ============================== INM SIZE RELATIVE TO CELL SIZE (TOO HIGH/TOO LOW) ==============================
+
+    inm_cell_ratios = inm_cell_ratio_table(db_path=args.database_path)
+
+    # large size
+    run_all_functions(
+        db_path=args.database_path,
+        all_cells=all_cells,
+        compartment_table_name="Per_INM",
+        feature_name="INM_Area_Over_Cell_Area",
+        scaled_feature_dir=f"{args.output_directory}/abnormal_inm_size/scaled_features",
+        outlier_objects_dir=f"{args.output_directory}/abnormal_inm_size/large_size/outlier_cells",
+        penetrance_dir=f"{args.output_directory}/abnormal_inm_size/large_size/penetrances",
+        cell_count_dir=f"{args.output_directory}/abnormal_inm_size/large_size/cell_counts",
+        strain_hits_dir=f"{args.output_directory}/abnormal_inm_size/large_size/strain_hits",
+        wt_pens_dir=f"{args.output_directory}/abnormal_inm_size/large_size/per_well_wt_pens",
+        plate=args.plate,
+        compartment_name="INM",
+        feature_table=inm_cell_ratios,
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        outlier_pval_cutoff=0.05,
+        right_sided_outliers=True,
+        sig_strain_pval_cutoff=0.05)
+
+    # large size
+    run_all_functions(
+        db_path=args.database_path,
+        all_cells=all_cells,
+        compartment_table_name="Per_INM",
+        feature_name="INM_Area_Over_Cell_Area",
+        scaled_feature_dir=f"{args.output_directory}/abnormal_inm_size/scaled_features",
+        outlier_objects_dir=f"{args.output_directory}/abnormal_inm_size/small_size/outlier_cells",
+        penetrance_dir=f"{args.output_directory}/abnormal_inm_size/small_size/penetrances",
+        cell_count_dir=f"{args.output_directory}/abnormal_inm_size/small_size/cell_counts",
+        strain_hits_dir=f"{args.output_directory}/abnormal_inm_size/small_size/strain_hits",
+        wt_pens_dir=f"{args.output_directory}/abnormal_inm_size/small_size/per_well_wt_pens",
+        plate=args.plate,
+        compartment_name="INM",
+        feature_table=inm_cell_ratios,
+        cell_cycle_stages=["G1", "SG2", "MAT"],
+        outlier_pval_cutoff=0.05,
+        right_sided_outliers=False,
+        sig_strain_pval_cutoff=0.05)
+
 
 # ============================== INM STD INTENSITY (TOO HIGH/TOO LOW) ==============================
     # The feature StdIntensity looks at the overall uniformity of the GFP channel within each cell.
@@ -92,7 +173,7 @@ if __name__ == '__main__':
         plate=args.plate,
         compartment_name="INM",
         feature_table=ff_feature_table,
-        cell_cycle_stages=["SG2", "MAT"],
+        cell_cycle_stages=["G1", "SG2", "MAT"],
         outlier_pval_cutoff=0.05,
         right_sided_outliers=False,
         sig_strain_pval_cutoff=0.05)
@@ -127,6 +208,8 @@ if __name__ == '__main__':
 # ============================== COMBINE PHENOTYPES ==============================
     combine_output_phenotypes_from_plate(
         phenotype_outliers={
+            "LargeINM": f"{args.output_directory}/abnormal_inm_size/large_size/outlier_cells/{args.plate}_INM_outlier_cells.csv",
+            "SmallINM": f"{args.output_directory}/abnormal_inm_size/small_size/outlier_cells/{args.plate}_INM_outlier_cells.csv",
             "HighUniform": f"{args.output_directory}/abnormal_inm_uniformity/high_uniformity/outlier_cells/{args.plate}_INM_outlier_cells.csv",
             "LowUniform": f"{args.output_directory}/abnormal_inm_uniformity/low_uniformity/outlier_cells/{args.plate}_INM_outlier_cells.csv",
             "LowFF": f"{args.output_directory}/abnormal_inm_form_factor/outlier_cells/{args.plate}_INM_outlier_cells.csv",
