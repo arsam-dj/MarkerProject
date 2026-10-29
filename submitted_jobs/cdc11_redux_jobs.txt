@@ -519,21 +519,53 @@ python /home/alex/alex_files/markerproject_redux/scripts/09-1_septin_phenotypes.
 python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_from_all_plates_for_phenotypes_directory.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Septins
 
 
-# Part 10 - create file with cell, compartment, and combined penetrance for every strain
+# Part 10.1 - get nuclear phenotypes
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate01.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate01
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate02.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate02
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate03.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate03
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate04.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate04
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate05.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate05
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate06.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate06
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate07.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate07
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate08.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate08
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate09.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate09
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate10.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate10
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate11.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate11
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate12.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate12
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate13.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate13
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_DMA_Plate14.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p DMA_Plate14
+
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_TSA_26C_Plate01.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p TSA_26C_Plate01
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_TSA_26C_Plate02.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p TSA_26C_Plate02
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_TSA_26C_Plate03.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p TSA_26C_Plate03
+
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_TSA_37C_Plate01.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p TSA_37C_Plate01
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_TSA_37C_Plate02.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p TSA_37C_Plate02
+python /home/alex/alex_files/markerproject_redux/scripts/09-3_nucleus_phenotypes.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11/Cdc11_TSA_37C_Plate03.db -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -p TSA_37C_Plate03
+
+
+# Part 10.2 - combine nuclear phenotype files from all plates
+python /home/alex/alex_files/markerproject_redux/scripts/GEN_combine_files_from_all_plates_for_phenotypes_directory.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus
+
+
+# Part 11 - create file with cell, compartment, and combined penetrance for every strain
 python /home/alex/alex_files/markerproject_redux/scripts/10_combine_cell_phenotype_overall_penetrances.py -c /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Cells/aggregated_cell_outlier_data/all_aggregated_cell_outlier_data.csv -s /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Septins/aggregated_cell_outlier_data/all_aggregated_cell_outlier_data.csv -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11 -d /home/alex/alex_files/markerproject_redux/screens/Cdc11
+python /home/alex/alex_files/markerproject_redux/scripts/10_combine_cell_phenotype_overall_penetrances.py -c /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Cells/aggregated_cell_outlier_data/all_aggregated_cell_outlier_data.csv -s /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus/aggregated_cell_outlier_data/all_aggregated_cell_outlier_data.csv -o /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11 -d /home/alex/alex_files/markerproject_redux/screens/Cdc11 -n nuc
 
 
-# Part 11.1 - get minimal cell count using replicate-replicate distance (whole-cell phenotypes)
+# Part 12.1 - get minimal cell count using replicate-replicate distance (whole-cell phenotypes)
 python /home/alex/alex_files/markerproject_redux/scripts/11-1_get_replicate_distances.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11 -c /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Cells/aggregated_cell_outlier_data -s Cdc11 -o /home/alex/alex_files/markerproject_redux/strain_filtering/Cells
 
 
-# Part 11.2 - create excel workbook with filtered strain spreadsheets (whole-cell data)
+# Part 12.2 - create excel workbook with filtered strain spreadsheets (whole-cell data)
 python /home/alex/alex_files/markerproject_redux/scripts/11-2_final_strain_filtering.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Cells -c /home/alex/alex_files/markerproject_redux/strain_filtering/Cells/per_replicate_penentrances_and_distances/Cdc11_per_replicate_penetrances_and_distances.csv -p /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Cells/aggregated_penetrance_data/all_aggregated_penetrance_data.csv -m 51 -s Cdc11 -o /home/alex/alex_files/markerproject_redux/strain_filtering/Cells/filtered_strain_workbooks
 
 
-# Part 12.1 - get minimal cell count using replicate-replicate distance (compartment phenotypes)
+# Part 13.1 - get minimal cell count using replicate-replicate distance (compartment phenotypes)
 python /home/alex/alex_files/markerproject_redux/scripts/11-1_get_replicate_distances.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11 -c /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Septins/aggregated_cell_outlier_data -s Cdc11 -o /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments
+python /home/alex/alex_files/markerproject_redux/scripts/11-1_get_replicate_distances.py -d /home/alex/alex_files/markerproject_redux/screens/Cdc11 -c /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus/aggregated_cell_outlier_data -s Hta2 -o /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments
 
 
-# Part 12.2 - create excel workbook with filtered strain spreadsheets (compartment data)
+# Part 13.2 - create excel workbook with filtered strain spreadsheets (compartment data)
 python /home/alex/alex_files/markerproject_redux/scripts/11-2_final_strain_filtering.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Septins -c /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments/per_replicate_penentrances_and_distances/Cdc11_per_replicate_penetrances_and_distances.csv -p /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Septins/aggregated_penetrance_data/all_aggregated_penetrance_data.csv -m 51 -s Cdc11 -o /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments/filtered_strain_workbooks
+python /home/alex/alex_files/markerproject_redux/scripts/11-2_final_strain_filtering.py -d /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus -c /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments/per_replicate_penentrances_and_distances/Hta2_per_replicate_penetrances_and_distances.csv -p /home/alex/alex_files/markerproject_redux/phenotypes/Cdc11/Nucleus/aggregated_penetrance_data/all_aggregated_penetrance_data.csv -m 51 -s Hta2 -o /home/alex/alex_files/markerproject_redux/strain_filtering/Compartments/filtered_strain_workbooks
