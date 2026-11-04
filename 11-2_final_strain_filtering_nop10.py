@@ -111,7 +111,8 @@ def get_duplicate_strains_from_v1(v1_coords_path, v2_coords_path):
         )
     
     # Identify duplicate strains in v1
-    v1_filtered = v1.filter(~pl.col("Name").is_in(["HIS3", "BLANK"]))
+    ###v1_filtered = v1.filter(~pl.col("Name").is_in(["HIS3", "BLANK"]))
+    v1_filtered = v1.filter(~pl.col("Name").is_in(["BLANK"]))
     v1_duplicated_strains = v1_filtered.select(["ORF", "Name", "Strain_ID"]).filter(v1_filtered["Strain_ID"].is_duplicated())
     
     # filter v2 so it only has v1 duplicated strains
@@ -126,6 +127,7 @@ def get_duplicate_strains_from_v1(v1_coords_path, v2_coords_path):
         .filter(pl.col("Strain_ID_right").is_null())
         .drop("Strain_ID_right")
     )
+    v1_rows_to_remove.write_csv("/home/alex/alex_files/markerproject_redux/misc_files/nop10_removed_duplicates.csv")
     
     # filter out unwanted rows from the original v1 dataframe
     v1_filtered = (
@@ -365,7 +367,7 @@ def combine_cell_counts_with_penetrances(per_rep_cell_count_path, penetrance_df)
                 pl.col(["Distance_R1-R2", "Distance_R1-R3", "Distance_R2-R3"]).is_null()
             ).alias("Num_Null_Dists")
         )
-        .join(penetrance_df, on=["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"])
+        .join(penetrance_df, on=["Plate", "Row", "Column", "ORF", "Name", "Strain_ID"], how="left")
     )
 
     return merged_df

@@ -55,7 +55,8 @@ def get_duplicate_strains_from_v1(v1_coords_path, v2_coords_path):
         )
     
     # Identify duplicate strains in v1
-    v1_filtered = v1.filter(~pl.col("Name").is_in(["HIS3", "BLANK"]))
+    ###v1_filtered = v1.filter(~pl.col("Name").is_in(["HIS3", "BLANK"]))
+    v1_filtered = v1.filter(~pl.col("Name").is_in(["BLANK"]))
     v1_duplicated_strains = v1_filtered.select(["ORF", "Name", "Strain_ID"]).filter(v1_filtered["Strain_ID"].is_duplicated())
     
     # filter v2 so it only has v1 duplicated strains
